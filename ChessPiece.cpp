@@ -196,16 +196,20 @@ bool Knight::isvalidMove(int startRow, int startCol, int endRow, int endCol,
     (void)pathClear;
     bool knightMove = false;
 
-    if (((startCol + 2 == endCol) || (startCol - 2 == endCol)) && ((startRow + 1 == endRow) || (startRow - 1 == endRow))) {
-        if (targetEmpty || targetEnemy) {
+    if (((startCol + 2 == endCol) || (startCol - 2 == endCol)) && ((startRow + 1 == endRow) || (startRow - 1 == endRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
             knightMove = true;
         }
     }
-    
-    if (((startCol + 1 == endCol) || (startCol - 1 == endCol)) && ((startRow + 2 == endRow) || (startRow - 2 == endRow))) {
-        if (targetEmpty || targetEnemy) {
+
+    if (((startCol + 1 == endCol) || (startCol - 1 == endCol)) && ((startRow + 2 == endRow) || (startRow - 2 == endRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
             knightMove = true;
-       }
+        }
     }
     return knightMove;
 }
@@ -215,7 +219,41 @@ bool Bishop::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                          bool targetEnemy, bool pathClear)
 {
     // bishop logic
-    return false;
+    bool bishopMove = false;
+
+    if ((startRow < endRow && startCol != endCol && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            bishopMove = true;
+        }
+    }
+
+    if ((startRow > endRow && startCol != endCol && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            bishopMove = true;
+        }
+    }
+
+    if ((startCol > endCol && startRow != endRow && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            bishopMove = true;
+        }
+    }
+
+    if ((startCol < endCol && startRow != endRow && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            bishopMove = true;
+        }
+    }
+
+    return bishopMove;
 }
 
 bool Rook::isvalidMove(int startRow, int startCol, int endRow, int endCol,
@@ -223,7 +261,19 @@ bool Rook::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                        bool targetEnemy, bool pathClear)
 {
     // rook logic
-    return false;
+    bool rookMove = false;
+
+    if (startRow != endRow && startCol == endCol)
+    {
+        rookMove = true;
+    }
+
+    if (startCol != endCol && startRow == endRow)
+    {
+        rookMove = true;
+    }
+
+    return rookMove && pathClear && (targetEmpty || targetEnemy);
 }
 
 bool Queen::isvalidMove(int startRow, int startCol, int endRow, int endCol,
@@ -231,7 +281,52 @@ bool Queen::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                         bool targetEnemy, bool pathClear)
 {
     // queen logic
-    return false;
+
+    bool queenMove = false;
+
+    if ((startRow != endRow && startCol == endCol) && (pathClear && (targetEmpty || targetEnemy)))
+    {
+        queenMove = true;
+    }
+
+    if ((startCol != endCol && startRow == endRow) && (pathClear && (targetEmpty || targetEnemy)))
+    {
+        queenMove = true;
+    }
+
+    if ((startRow < endRow && startCol != endCol && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            queenMove = true;
+        }
+    }
+
+    if ((startRow > endRow && startCol != endCol && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            queenMove = true;
+        }
+    }
+
+    if ((startCol > endCol && startRow != endRow && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            queenMove = true;
+        }
+    }
+
+    if ((startCol < endCol && startRow != endRow && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
+    {
+        if (targetEmpty || targetEnemy)
+        {
+            queenMove = true;
+        }
+    }
+
+    return queenMove;
 }
 
 bool King::isvalidMove(int startRow, int startCol, int endRow, int endCol,
@@ -239,5 +334,16 @@ bool King::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                        bool targetEnemy, bool pathClear)
 {
     // king logic
-    return false;
+
+    bool kingMove = false;
+
+    int colDif = endCol - startCol;
+    int rowDif = endRow - startRow;
+
+    if ((abs(colDif) < 2 && abs(rowDif) < 2) && (rowDif != 0 || colDif != 0))
+    {
+        kingMove = true;
+    }
+
+    return kingMove && (targetEmpty || targetEnemy);
 }

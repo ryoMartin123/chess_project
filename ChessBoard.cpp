@@ -103,79 +103,58 @@ Pieces *targetPiece = board[getRow(square)][getCol(square)];
 
 bool Board::pathClear(std::string startSquare, std::string endSquare)
 {
-    if ((getRow(startSquare) == getRow(endSquare)) && getCol(endSquare) > getCol(startSquare))
+    int startRow = getRow(startSquare);
+    int startCol = getCol(startSquare);
+    int endRow = getRow(endSquare);
+    int endCol = getCol(endSquare);
+
+    int rowDiff = endRow - startRow;
+    int colDiff = endCol - startCol;
+
+    bool straightMove = rowDiff == 0 || colDiff == 0;
+    bool diagonalMove = rowDiff == colDiff || rowDiff == -colDiff;
+
+    if (!straightMove && !diagonalMove)
     {
-        for (int i = getCol(startSquare) + 1; i < getCol(endSquare); i++)
-        {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
-        }
-        return true;
+        return false;
     }
 
-    if ((getRow(startSquare) == getRow(endSquare)) && getCol(endSquare) < getCol(startSquare))
+    int rowStep = 0;
+    int colStep = 0;
+
+    if (rowDiff > 0)
     {
-        for (int i = getCol(startSquare) + 1; i > getCol(endSquare); i--)
-        {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
-        }
-        return true;
+        rowStep = 1;
+    }
+    else if (rowDiff < 0)
+    {
+        rowStep = -1;
     }
 
-    if ((getCol(startSquare) == getCol(endSquare)) && getRow(endSquare) > getRow(startSquare))
+    if (colDiff > 0)
     {
-        for (int i = getRow(startSquare) + 1; i < getRow(endSquare); i++)
-        {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
-        }
-        return true;
+        colStep = 1;
+    }
+    else if (colDiff < 0)
+    {
+        colStep = -1;
     }
 
-    if ((getCol(startSquare) == getCol(endSquare)) && getRow(endSquare) < getRow(startSquare))
+    int currentRow = startRow + rowStep;
+    int currentCol = startCol + colStep;
+
+    while (currentRow != endRow || currentCol != endCol)
     {
-        for (int i = getRow(startSquare) + 1; i > getRow(endSquare); i--)
+        if (board[currentRow][currentCol] != nullptr)
         {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
+            return false;
         }
-        return true;
+
+        currentRow += rowStep;
+        currentCol += colStep;
     }
 
-    if (((getCol(startSquare)) != getCol(endSquare)) && (getRow(startSquare) != getRow(endSquare)) && (getCol(startSquare) > getCol(endSquare)))
-    {
-        for (int i = getRow(startSquare) + 1; i < getRow(endSquare); i++)
-        {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    if (((getCol(startSquare)) != getCol(endSquare)) && (getRow(startSquare) != getRow(endSquare)) && (getCol(startSquare) < getCol(endSquare)))
-    {
-        for (int i = getRow(startSquare) + 1; i > getRow(endSquare); i--)
-        {
-            if (board[getRow(startSquare)][i] != nullptr)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 void Board::placePiece(Pieces *piece, std::string pieceType, std::string square)
