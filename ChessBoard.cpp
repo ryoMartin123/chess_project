@@ -16,6 +16,8 @@ Board::Board()
             board[i][j] = nullptr;
         }
     }
+
+    turn = "White";
 }
 
 bool Board::isValid(std::string square)
@@ -85,7 +87,6 @@ Pieces *targetPiece = board[getRow(square)][getCol(square)];
 
     if (targetPiece == nullptr)
     {
-        std::cout << "This square does not have an enemy piece on it!\n";
         return false;
     }
     else
@@ -95,7 +96,6 @@ Pieces *targetPiece = board[getRow(square)][getCol(square)];
             return true;
         }
         else {
-            std::cout << "This square has your own piece on it!\n";
             return false;
         }
     }
@@ -147,6 +147,7 @@ bool Board::pathClear(std::string startSquare, std::string endSquare)
     {
         if (board[currentRow][currentCol] != nullptr)
         {
+            Pieces *piece = board[currentRow][currentCol];
             return false;
         }
 
@@ -159,6 +160,12 @@ bool Board::pathClear(std::string startSquare, std::string endSquare)
 
 void Board::placePiece(Pieces *piece, std::string pieceType, std::string square)
 {
+
+    if (isValid(square) == false)
+    {
+        printInvalidSquare(square);
+        return;
+    }
 
     if (board[getRow(square)][getCol(square)] == nullptr)
     {
@@ -173,51 +180,242 @@ void Board::placePiece(Pieces *piece, std::string pieceType, std::string square)
     }
 }
 
-void Board::movePiece(std::string pieceType, std::string startSquare, std::string endSquare)
+void Board::printInvalidSquare(std::string square)
+{
+    std::cout << square << " is not a valid square.\n";
+}
+
+void Board::printInvalidStartSquare(std::string square)
+{
+    std::cout << square << " is not a valid starting square.\n";
+}
+
+void Board::printInvalidEndSquare(std::string square)
+{
+    std::cout << square << " is not a valid ending square.\n";
+}
+
+void Board::printNoPieceOnSquare(std::string square)
+{
+    std::cout << "There is no piece on " << square << ".\n";
+}
+
+void Board::printSameSquareMove()
+{
+    std::cout << "Start square and end square cannot be the same.\n";
+}
+
+void Board::printWrongTurn()
+{
+    std::cout << "It is " << turn << "'s turn!\n";
+}
+
+void Board::printStillTurn()
+{
+    std::cout << "It is still " << turn << "'s turn\n";
+}
+
+void Board::printNextTurn()
+{
+    std::cout << "It is " << turn << "'s turn\n";
+}
+
+void Board::printIllegalMove(Pieces *piece)
+{
+    std::cout << "This is an illegal " << piece->getType() << " move!\n";
+}
+
+void Board::printIllegalCapture(Pieces *piece)
+{
+    std::cout << "This is an illegal " << piece->getType() << " capture!\n";
+}
+
+void Board::printOwnPieceOnDestination(std::string square)
+{
+    std::cout << "Cannot move to " << square << " because your own piece is there.\n";
+}
+
+void Board::printMoveSuccess(Pieces *piece, std::string startSquare, std::string endSquare)
+{
+    std::cout << "You moved your " << piece->getColor() << " " << piece->getType() << " from " << startSquare << " to " << endSquare << ".\n";
+}
+
+void Board::printCaptureSuccess(Pieces *attacker, Pieces *target, std::string endSquare)
+{
+    std::cout << "Your " << attacker->getColor() << " " << attacker->getType() << " captured the " << target->getColor() << " " << target->getType() << " on " << endSquare << ".\n";
+}
+
+void Board::printSelfCheckMove()
+{
+    std::cout << "You cannot make that move. Your king will be in check!\n";
+}
+
+void Board::printNoKing()
+{
+    std::cout << "There is no king on the board!\n";
+}
+
+
+bool Board::isInCheck(std::string color) {
+    Pieces *king = nullptr;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (board[i][j] != nullptr) {
+                if ((board[i][j] -> getType() == "King") && (board[i][j] -> getColor()) == color) {
+                    king = board[i][j];
+                }
+            }
+        }
+    }
+
+    if (king == nullptr) {
+        printNoKing();
+        return false;
+    }
+    
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (board[i][j] != nullptr) {
+                Pieces *piece = board[i][j];
+                if (piece -> getColor() != color) {
+                    int startRow = getRow(piece -> getSquare());
+                    int startCol = getCol(piece -> getSquare());
+                    int endRow = getRow(king -> getSquare());
+                    int endCol = getCol(king -> getSquare());
+                    std::string movingPieceColor = piece -> getColor();
+                    bool empty = false;
+                    bool enemy = true;
+                    bool clear = pathClear(piece -> getSquare(), king -> getSquare());
+                    bool check = piece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear);
+
+                    if (check) {
+                        return true;
+                    }
+                }
+
+            }
+            
+        }
+    }
+
+    return false;
+
+}
+
+void Board::movePiece(std::string startSquare, std::string endSquare)
 {
 
     if (isValid(startSquare) == false)
     {
-        std::cout << startSquare << " is not a valid starting square.\n";
+        printInvalidStartSquare(startSquare);
         return;
     }
 
     if (isValid(endSquare) == false)
     {
-        std::cout << endSquare << " is not a valid ending square.\n";
+        printInvalidEndSquare(endSquare);
         return;
     }
 
     if (startSquare == endSquare)
     {
-        std::cout << "Start square and end square cannot be the same.\n";
+        printSameSquareMove();
         return;
     }
 
     if (board[getRow(startSquare)][getCol(startSquare)] == nullptr)
     {
-        std::cout << "There is no piece on " << startSquare << ".\n";
+        printNoPieceOnSquare(startSquare);
         return;
     }
 
-    Pieces *movingPiece = board[getRow(startSquare)][getCol(startSquare)];
     Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
+    Pieces * movingPiece = board[getRow(startSquare)][getCol(startSquare)];
 
-    if (targetPiece != nullptr && movingPiece->getColor() == targetPiece->getColor())
-    {
-        std::cout << "Cannot move to " << endSquare << " because your own piece is there.\n";
+    if  (movingPiece -> getColor() != turn) {
+        printWrongTurn();
         return;
     }
+    
+    int startRow = getRow(startSquare);
+    int startCol = getCol(startSquare);
+    int endRow = getRow(endSquare);
+    int endCol = getCol(endSquare);
+    std::string movingPieceColor = movingPiece -> getColor();
+    bool empty = isEmpty(endSquare);
+    bool enemy = isEnemy(endSquare, movingPiece -> getColor());
+    bool clear = pathClear(startSquare, endSquare);
 
-    if (targetPiece != nullptr)
-    {
-        targetPiece->capture();
-        std::cout << "Your " << pieceType << " captured the " << targetPiece->getColor() << " " << targetPiece->getType() << " on " << endSquare << ".\n";
+    
+    if (movingPiece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
+
+        board[getRow(endSquare)][getCol(endSquare)] = movingPiece;
+        board[getRow(startSquare)][getCol(startSquare)] = nullptr;
+        board[getRow(endSquare)][getCol(endSquare)]->setSquare(endSquare);
+
+        if (isInCheck(turn)) {
+
+            printSelfCheckMove();
+            printStillTurn();
+            board[getRow(startSquare)][getCol(startSquare)] = movingPiece;
+            movingPiece -> setSquare(startSquare);
+            board[getRow(endSquare)][getCol(endSquare)] = nullptr;
+            if (targetPiece != nullptr) {
+                board[getRow(endSquare)][getCol(endSquare)] = targetPiece;
+                targetPiece -> setSquare(endSquare);
+            }
+            return;
+        }
+
+        if (targetPiece != nullptr)
+        {
+            targetPiece->capture();
+            printCaptureSuccess(movingPiece, targetPiece, endSquare);
+        }
+
+        
+        if (turn == "White") {
+            turn = "Black";
+            printMoveSuccess(movingPiece, startSquare, endSquare);
+            printNextTurn();
+            return;
+        }
+        
+        else {
+            turn = "White";
+            printMoveSuccess(movingPiece, startSquare, endSquare);
+            printNextTurn();
+            return;
+        }
     }
 
-    board[getRow(endSquare)][getCol(endSquare)] = movingPiece;
-    board[getRow(startSquare)][getCol(startSquare)] = nullptr;
-    board[getRow(endSquare)][getCol(endSquare)]->setSquare(endSquare);
+    else {
 
-    std::cout << "You moved your " << pieceType << " from " << startSquare << " to " << endSquare << ".\n";
+        if (targetPiece != nullptr && targetPiece -> getColor() != movingPiece -> getColor()) {
+            printIllegalCapture(movingPiece);
+            printStillTurn();
+            return; 
+        }
+
+        else if (targetPiece != nullptr && movingPiece->getColor() == targetPiece->getColor())
+        {
+        printOwnPieceOnDestination(endSquare);
+        printStillTurn();
+        return;
+        }
+
+        else {
+            printIllegalMove(movingPiece);
+            printStillTurn();
+            return;
+        }
+
+    }
+
 }
+
+
+

@@ -9,41 +9,22 @@ int main()
 
     Board daBoard;
 
-    King blackKing("Black", false, "c2");
-    Move kingMove(blackKing.getSquare(), "d4");
+    Queen whiteQueen("White", false, "e2");
+    Move queenMove(whiteQueen.getSquare(), "f3");
 
-    Pawn whitePawn("White", false, "d2");
-    Move pawnMove(whitePawn.getSquare(), "d3");
+    King blackKing("Black", false, "c5");
 
-    daBoard.placePiece(&whitePawn, whitePawn.getType(), whitePawn.getSquare());
+    Knight blackKnight("Black", false, "b4");
+    Move knightMove(blackKing.getSquare(), "d5");
 
-    if (whitePawn.isvalidMove(daBoard.getRow(pawnMove.getstartSquare()), daBoard.getCol(pawnMove.getstartSquare()),
-                              daBoard.getRow(pawnMove.getendSquare()), daBoard.getCol(pawnMove.getendSquare()), whitePawn.getColor(),
-                              daBoard.isEmpty(pawnMove.getendSquare()), daBoard.isEnemy(pawnMove.getendSquare(), whitePawn.getColor()), daBoard.pathClear(pawnMove.getstartSquare(), pawnMove.getendSquare())))
-    {
-        daBoard.movePiece(whitePawn.getType(), pawnMove.getstartSquare(), pawnMove.getendSquare());
-        std::cout << "Yes!\n";
-    }
-
-    else
-    {
-        std::cout << "That is not a valid pawn move!";
-        return false;
-    }
+    daBoard.placePiece(&whiteQueen, whiteQueen.getType(), whiteQueen.getSquare());
+    daBoard.movePiece(queenMove.getstartSquare(), queenMove.getendSquare());
 
     daBoard.placePiece(&blackKing, blackKing.getType(), blackKing.getSquare());
+    
+    daBoard.placePiece(&blackKnight, blackKnight.getType(), blackKnight.getSquare());
+    daBoard.movePiece(knightMove.getstartSquare(), knightMove.getendSquare());
 
-    if (blackKing.isvalidMove(daBoard.getRow(kingMove.getstartSquare()), daBoard.getCol(kingMove.getstartSquare()),
-                              daBoard.getRow(kingMove.getendSquare()), daBoard.getCol(kingMove.getendSquare()), blackKing.getColor(),
-                              daBoard.isEmpty(kingMove.getendSquare()), daBoard.isEnemy(kingMove.getendSquare(), blackKing.getColor()), daBoard.pathClear(kingMove.getstartSquare(), kingMove.getendSquare())))
-    {
-        daBoard.movePiece(blackKing.getType(), kingMove.getstartSquare(), kingMove.getendSquare());
-        std::cout << "Yes!\n";
-    }
 
-    else
-    {
-        std::cout << "That is not a valid " << blackKing.getType() << " move!\n";
-        return false;
-    }
+
 }

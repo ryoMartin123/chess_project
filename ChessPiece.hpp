@@ -25,6 +25,7 @@ public:
     bool isCaptured();
     std::string setSquare(std::string newSquare);
     void capture();
+    void undoCapture();
 };
 
 class Pawn : public Pieces

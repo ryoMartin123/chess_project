@@ -104,6 +104,10 @@ void Pieces::capture()
     captured = true;
 }
 
+void Pieces::undoCapture() {
+    captured = false;
+}
+
 bool Pawn::isvalidMove(int startRow, int startCol, int endRow, int endCol, std::string color, bool targetEmpty, bool targetEnemy, bool pathClear)
 {
     bool pawnForward = false;
