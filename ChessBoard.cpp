@@ -75,25 +75,29 @@ bool Board::isEmpty(std::string square)
     }
     else
     {
-        std::cout << "This square has a piece on it already!\n";
         return false;
     }
 }
 
-bool Board::isEnemy(std::string square, std::string yourColor)
-{
+bool Board::isEnemy(std::string square, std::string yourColor) {
 
-    Pieces *targetPiece = board[getRow(square)][getCol(square)];
-    std::string targetColor = targetPiece->getColor();
+Pieces *targetPiece = board[getRow(square)][getCol(square)];
 
-    if ((board[getRow(square)][getCol(square)] != nullptr) && (yourColor != targetColor))
-    {
-        return true;
-    }
-    else
+    if (targetPiece == nullptr)
     {
         std::cout << "This square does not have an enemy piece on it!\n";
         return false;
+    }
+    else
+    {
+        std::string targetColor = targetPiece->getColor();
+        if (yourColor != targetColor) {
+            return true;
+        }
+        else {
+            std::cout << "This square has your own piece on it!\n";
+            return false;
+        }
     }
 }
 
@@ -217,13 +221,22 @@ void Board::movePiece(std::string pieceType, std::string startSquare, std::strin
         return;
     }
 
-    if (board[getRow(endSquare)][getCol(endSquare)] != nullptr)
+    Pieces *movingPiece = board[getRow(startSquare)][getCol(startSquare)];
+    Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
+
+    if (targetPiece != nullptr && movingPiece->getColor() == targetPiece->getColor())
     {
-        std::cout << "Cannot move to " << endSquare << " because there is already a piece there.\n";
+        std::cout << "Cannot move to " << endSquare << " because your own piece is there.\n";
         return;
     }
 
-    board[getRow(endSquare)][getCol(endSquare)] = board[getRow(startSquare)][getCol(startSquare)];
+    if (targetPiece != nullptr)
+    {
+        targetPiece->capture();
+        std::cout << "Your " << pieceType << " captured the " << targetPiece->getColor() << " " << targetPiece->getType() << " on " << endSquare << ".\n";
+    }
+
+    board[getRow(endSquare)][getCol(endSquare)] = movingPiece;
     board[getRow(startSquare)][getCol(startSquare)] = nullptr;
     board[getRow(endSquare)][getCol(endSquare)]->setSquare(endSquare);
 

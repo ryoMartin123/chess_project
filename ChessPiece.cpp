@@ -113,7 +113,7 @@ bool Pawn::isvalidMove(int startRow, int startCol, int endRow, int endCol, std::
     // bool Promotion = false;
     bool validMove = false;
 
-    if (color == "White" && startRow == 2)
+    if (color == "White" && startRow == 1)
     {
 
         if (endRow == startRow + 2 && endCol == startCol && pathClear && targetEmpty)
@@ -145,7 +145,7 @@ bool Pawn::isvalidMove(int startRow, int startCol, int endRow, int endCol, std::
         }
     }
 
-    if (color == "Black" && startRow == 7)
+    if (color == "Black" && startRow == 6)
     {
 
         if (endRow == startRow - 2 && endCol == startCol && pathClear && targetEmpty)
@@ -193,7 +193,21 @@ bool Knight::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                          bool targetEnemy, bool pathClear)
 {
     // knight logic
-    return false;
+    (void)pathClear;
+    bool knightMove = false;
+
+    if (((startCol + 2 == endCol) || (startCol - 2 == endCol)) && ((startRow + 1 == endRow) || (startRow - 1 == endRow))) {
+        if (targetEmpty || targetEnemy) {
+            knightMove = true;
+        }
+    }
+    
+    if (((startCol + 1 == endCol) || (startCol - 1 == endCol)) && ((startRow + 2 == endRow) || (startRow - 2 == endRow))) {
+        if (targetEmpty || targetEnemy) {
+            knightMove = true;
+       }
+    }
+    return knightMove;
 }
 
 bool Bishop::isvalidMove(int startRow, int startCol, int endRow, int endCol,

@@ -8,17 +8,13 @@ int main()
 {
 
     Board daBoard;
+    
+    Knight blackKnight("Black", false, "d5");
+    Move knightMove(blackKnight.getSquare(), "f3");
 
-    std::cout << "Yes";
+    Pawn whitePawn("White", false, "f3");
+    Move pawnMove(whitePawn.getSquare(), "f4");
 
-    Knight whiteKnight("White", false, "g1");
-    Move knightMove(whiteKnight.getSquare(), "f3");
-
-    Pawn whitePawn("White", false, "g2");
-    Move pawnMove(whitePawn.getSquare(), "g3");
-
-    daBoard.placePiece(&whiteKnight, whiteKnight.getType(), whiteKnight.getSquare());
-    daBoard.movePiece(whiteKnight.getType(), knightMove.getstartSquare(), knightMove.getendSquare());
 
     daBoard.placePiece(&whitePawn, whitePawn.getType(), whitePawn.getSquare());
 
@@ -27,7 +23,7 @@ int main()
                               daBoard.isEmpty(pawnMove.getendSquare()), daBoard.isEnemy(pawnMove.getendSquare(), whitePawn.getColor()), daBoard.pathClear(pawnMove.getstartSquare(), pawnMove.getendSquare())))
     {
         daBoard.movePiece(whitePawn.getType(), pawnMove.getstartSquare(), pawnMove.getendSquare());
-        std::cout << "Yes!";
+        std::cout << "Yes!\n";
     }
 
     else
@@ -35,4 +31,25 @@ int main()
         std::cout << "That is not a valid pawn move!";
         return false;
     }
+
+    daBoard.placePiece(&blackKnight, blackKnight.getType(), blackKnight.getSquare());
+    
+    if (blackKnight.isvalidMove(daBoard.getRow(knightMove.getstartSquare()), daBoard.getCol(knightMove.getstartSquare()),
+                              daBoard.getRow(knightMove.getendSquare()), daBoard.getCol(knightMove.getendSquare()), blackKnight.getColor(),
+                              daBoard.isEmpty(knightMove.getendSquare()), daBoard.isEnemy(knightMove.getendSquare(), blackKnight.getColor()), daBoard.pathClear(knightMove.getstartSquare(), knightMove.getendSquare())))
+    {
+        daBoard.movePiece(blackKnight.getType(), knightMove.getstartSquare(), knightMove.getendSquare());
+        std::cout << "Yes!\n";
+    }
+
+    else
+    {
+        std::cout << "That is not a valid " << blackKnight.getType() << " move!\n";
+        return false;
+    }
+
+
 }
+
+
+
