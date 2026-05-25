@@ -1,0 +1,20 @@
+# React / Node
+frontend/node_modules/
+frontend/dist/
+
+# C++ build files
+*.exe
+*.o
+*.obj
+*.out
+
+# Logs
+*.log
+npm-debug.log*
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+Desktop.ini
