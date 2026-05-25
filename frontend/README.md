@@ -1,65 +1,42 @@
 # Chess Frontend
 
-This is a React/Vite chess frontend with a small mock backend for testing the frontend request shape before the real C++ backend is ready.
+This React/Vite board plays a live game against the local C++ rules engine. The backend owns game state, and the frontend loads its current position, submits moves, supports promotion choice, and can reset the game.
 
-## Run the frontend
+## Run
+
+Start the C++ server:
+
+```sh
+cd ..\backend
+g++.exe -std=c++17 ApiServer.cpp ChessBoard.cpp ChessPiece.cpp Move.cpp -lws2_32 -o chess_backend.exe
+.\chess_backend.exe
+```
+
+Start Vite from `frontend`:
 
 ```sh
 npm run dev
 ```
 
-## Run the mock backend
-
-In a second terminal:
+Vite proxies `/api` to `http://127.0.0.1:8787`. To use a backend on another origin, create `.env.local`:
 
 ```sh
-npm run backend:mock
+VITE_CHESS_API_URL=http://127.0.0.1:8787
+VITE_API_TIMEOUT_MS=1200
 ```
 
-Vite proxies `/api` to `http://localhost:8787` during development. If the backend is not running, the frontend falls back to local move simulation so basic board testing still works.
+## Development Mock
 
-## Backend contract
+`npm run backend:mock` runs a lightweight stateful transport mock for frontend interaction work. It does not enforce chess legality; use the C++ backend to play a valid game.
 
-`POST /api/move`
+## API Contract
 
-Request:
+The frontend uses:
 
-```json
-{
-  "board": [
-    ["r", "n", "b", "q", "k", "b", "n", "r"],
-    ["p", "p", "p", "p", "p", "p", "p", "p"],
-    ["", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    ["P", "P", "P", "P", "P", "P", "P", "P"],
-    ["R", "N", "B", "Q", "K", "B", "N", "R"]
-  ],
-  "move": {
-    "from": { "row": 6, "col": 4, "square": "e2" },
-    "to": { "row": 4, "col": 4, "square": "e4" }
-  }
-}
-```
+- `GET /api/health`
+- `GET /api/state`
+- `POST /api/reset`
+- `POST /api/legal-moves` with `{ "square": "e2" }`
+- `POST /api/move` with `{ "move": { "from": { "square": "e2" }, "to": { "square": "e4" } }, "promotion": "Queen" }`
 
-Response:
-
-```json
-{
-  "valid": true,
-  "board": [
-    ["r", "n", "b", "q", "k", "b", "n", "r"],
-    ["p", "p", "p", "p", "p", "p", "p", "p"],
-    ["", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    ["", "", "", "", "P", "", "", ""],
-    ["", "", "", "", "", "", "", ""],
-    ["P", "P", "P", "P", "", "P", "P", "P"],
-    ["R", "N", "B", "Q", "K", "B", "N", "R"]
-  ],
-  "message": "Backend accepted move: e2 to e4"
-}
-```
-
-The C++ backend should implement this same route and response shape.
+Move responses contain the authoritative `board`, `turn`, `gameOver`, `valid`, and `message` values.

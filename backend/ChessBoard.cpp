@@ -114,6 +114,34 @@ Pieces *targetPiece = board[getRow(square)][getCol(square)];
     }
 }
 
+Pieces *Board::getPieceAt(std::string square)
+{
+    if (!isValid(square))
+    {
+        return nullptr;
+    }
+
+    return board[getRow(square)][getCol(square)];
+}
+
+std::string Board::getTurn()
+{
+    return turn;
+}
+
+void Board::setTurn(std::string nextTurn)
+{
+    if (nextTurn == "Black" || nextTurn == "White")
+    {
+        turn = nextTurn;
+    }
+}
+
+bool Board::isGameOver()
+{
+    return gameOver;
+}
+
 bool Board::pathClear(std::string startSquare, std::string endSquare)
 {
     int startRow = getRow(startSquare);
@@ -408,43 +436,8 @@ bool Board::hasAnyLegalMove(std::string color) {
                     for (int y = 0; y < 8; y++) {
                         std::string endSquare = getSquare(x, y);
 
-                            if (startSquare == endSquare) {
-                                continue;
-                            }
-                            int startRow = getRow(piece -> getSquare());
-                            int startCol = getCol(piece -> getSquare());
-                            int endRow = getRow(endSquare);
-                            int endCol = getCol(endSquare);
-                            std::string movingPieceColor = color;
-                            Pieces * targetPiece = board[endRow][endCol];
-
-                            if (targetPiece != nullptr && targetPiece -> getColor() == color) {
-                                continue;
-                            }
-
-                            bool empty = isEmpty(endSquare);
-                            bool enemy = false;
-                            if (targetPiece != nullptr && targetPiece -> getColor() != color) {
-                                enemy = true;
-                            }
-                            bool clear = pathClear(piece -> getSquare(), endSquare);
-
-                            if(piece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
-                                board[endRow][endCol] = piece;
-                                board[startRow][startCol] = nullptr;
-                                piece -> setSquare(endSquare);
-
-                                bool stillInCheck = isInCheck(color);
-                                board[startRow][startCol] = piece;
-                                board[endRow][endCol] = targetPiece;
-                                piece -> setSquare(startSquare);
-                                if (targetPiece != nullptr) {
-                                    targetPiece -> setSquare(endSquare);
-                                }
-
-                                if (stillInCheck == false) {
-                                    return true;
-                                }
+                        if (startSquare != endSquare && isLegalMoveForPosition(piece, startSquare, endSquare)) {
+                            return true;
                         }
                     }
                 }
@@ -632,6 +625,10 @@ bool Board::canEnPassant(Pieces *movingPiece, std::string startSquare, std::stri
     int lastEndRow = getRow(lastEndSquare);
     int lastEndCol = getCol(lastEndSquare);
 
+    if (board[lastEndRow][lastEndCol] != lastMovedPiece) {
+        return false;
+    }
+
     if (abs(lastEndRow - lastStartRow) != 2) {
         return false;
     }
@@ -653,6 +650,151 @@ bool Board::canEnPassant(Pieces *movingPiece, std::string startSquare, std::stri
     }
 
     return endRow == startRow - 1;
+}
+
+bool Board::canCastleSafely(Pieces *king, std::string startSquare, std::string endSquare) {
+    if (king == nullptr || king->getType() != "King" || king->getHasMoved()) {
+        return false;
+    }
+
+    std::string color = king->getColor();
+    std::string rookSquare;
+    std::string rookDestination;
+    std::string transitSquare;
+
+    if (color == "White" && startSquare == "e1" && endSquare == "g1") {
+        rookSquare = "h1";
+        rookDestination = "f1";
+        transitSquare = "f1";
+    }
+    else if (color == "White" && startSquare == "e1" && endSquare == "c1") {
+        rookSquare = "a1";
+        rookDestination = "d1";
+        transitSquare = "d1";
+    }
+    else if (color == "Black" && startSquare == "e8" && endSquare == "g8") {
+        rookSquare = "h8";
+        rookDestination = "f8";
+        transitSquare = "f8";
+    }
+    else if (color == "Black" && startSquare == "e8" && endSquare == "c8") {
+        rookSquare = "a8";
+        rookDestination = "d8";
+        transitSquare = "d8";
+    }
+    else {
+        return false;
+    }
+
+    Pieces *rook = board[getRow(rookSquare)][getCol(rookSquare)];
+    if (rook == nullptr || rook->getColor() != color || rook->getType() != "Rook" ||
+        rook->getHasMoved() || !pathClear(startSquare, rookSquare) || isInCheck(color)) {
+        return false;
+    }
+
+    board[getRow(transitSquare)][getCol(transitSquare)] = king;
+    board[getRow(startSquare)][getCol(startSquare)] = nullptr;
+    king->setSquare(transitSquare);
+    bool crossesCheck = isInCheck(color);
+    board[getRow(startSquare)][getCol(startSquare)] = king;
+    board[getRow(transitSquare)][getCol(transitSquare)] = nullptr;
+    king->setSquare(startSquare);
+
+    if (crossesCheck) {
+        return false;
+    }
+
+    board[getRow(endSquare)][getCol(endSquare)] = king;
+    board[getRow(startSquare)][getCol(startSquare)] = nullptr;
+    board[getRow(rookDestination)][getCol(rookDestination)] = rook;
+    board[getRow(rookSquare)][getCol(rookSquare)] = nullptr;
+    king->setSquare(endSquare);
+    rook->setSquare(rookDestination);
+    bool landsInCheck = isInCheck(color);
+    board[getRow(startSquare)][getCol(startSquare)] = king;
+    board[getRow(endSquare)][getCol(endSquare)] = nullptr;
+    board[getRow(rookSquare)][getCol(rookSquare)] = rook;
+    board[getRow(rookDestination)][getCol(rookDestination)] = nullptr;
+    king->setSquare(startSquare);
+    rook->setSquare(rookSquare);
+
+    return !landsInCheck;
+}
+
+bool Board::isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare, std::string endSquare) {
+    if (movingPiece == nullptr || !isValid(startSquare) || !isValid(endSquare) || startSquare == endSquare) {
+        return false;
+    }
+
+    Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
+    if (targetPiece != nullptr &&
+        (targetPiece->getColor() == movingPiece->getColor() || targetPiece->getType() == "King")) {
+        return false;
+    }
+
+    int startRow = getRow(startSquare);
+    int startCol = getCol(startSquare);
+    int endRow = getRow(endSquare);
+    int endCol = getCol(endSquare);
+    bool castleMove = movingPiece->getType() == "King" && startRow == endRow && abs(endCol - startCol) == 2;
+
+    if (castleMove) {
+        return canCastleSafely(movingPiece, startSquare, endSquare);
+    }
+
+    bool validEnPassant = canEnPassant(movingPiece, startSquare, endSquare);
+    bool validMove = movingPiece->isvalidMove(
+        startRow,
+        startCol,
+        endRow,
+        endCol,
+        movingPiece->getColor(),
+        isEmpty(endSquare),
+        targetPiece != nullptr && targetPiece->getColor() != movingPiece->getColor(),
+        pathClear(startSquare, endSquare));
+
+    if (!validMove && !validEnPassant) {
+        return false;
+    }
+
+    Pieces *enPassantPawn = nullptr;
+    if (validEnPassant) {
+        enPassantPawn = board[getRow(lastEndSquare)][getCol(lastEndSquare)];
+        board[getRow(lastEndSquare)][getCol(lastEndSquare)] = nullptr;
+    }
+
+    board[endRow][endCol] = movingPiece;
+    board[startRow][startCol] = nullptr;
+    movingPiece->setSquare(endSquare);
+    bool leavesKingInCheck = isInCheck(movingPiece->getColor());
+    board[startRow][startCol] = movingPiece;
+    board[endRow][endCol] = targetPiece;
+    movingPiece->setSquare(startSquare);
+    if (enPassantPawn != nullptr) {
+        board[getRow(lastEndSquare)][getCol(lastEndSquare)] = enPassantPawn;
+    }
+
+    return !leavesKingInCheck;
+}
+
+std::vector<std::string> Board::getLegalMoves(std::string startSquare) {
+    std::vector<std::string> moves;
+    Pieces *movingPiece = getPieceAt(startSquare);
+
+    if (gameOver || movingPiece == nullptr || movingPiece->getColor() != turn) {
+        return moves;
+    }
+
+    for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+            std::string endSquare = getSquare(row, col);
+            if (isLegalMoveForPosition(movingPiece, startSquare, endSquare)) {
+                moves.push_back(endSquare);
+            }
+        }
+    }
+
+    return moves;
 }
 
 bool Board::moveLeavesKingInCheck(Pieces *movingPiece, Pieces *targetPiece, std::string startSquare, std::string endSquare) {
@@ -715,6 +857,14 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
 
     if  (movingPiece -> getColor() != turn) {
         printWrongTurn();
+        return false;
+    }
+
+    if (targetPiece != nullptr &&
+        targetPiece->getColor() != movingPiece->getColor() &&
+        targetPiece->getType() == "King") {
+        printIllegalCapture(movingPiece);
+        printStillTurn();
         return false;
     }
     
@@ -831,10 +981,11 @@ void Board::rememberLastMove(Pieces *piece, std::string startSquare, std::string
 bool Board::finishSuccessfulMove(Pieces *movingPiece, std::string startSquare, std::string endSquare)
 {
     std::string opponentColor = getoponentColor(movingPiece->getColor());
+    rememberLastMove(movingPiece, startSquare, endSquare);
+    turn = opponentColor;
 
     if (isCheckmate(opponentColor)) {
         printCheckMate(movingPiece->getColor());
-        rememberLastMove(movingPiece, startSquare, endSquare);
         gameOver = true;
         return true;
     }
@@ -845,13 +996,10 @@ bool Board::finishSuccessfulMove(Pieces *movingPiece, std::string startSquare, s
 
     else if (isStalemate(opponentColor)) {
         printStaleMate(movingPiece->getColor());
-        rememberLastMove(movingPiece, startSquare, endSquare);
         gameOver = true;
         return true;
     }
 
-    rememberLastMove(movingPiece, startSquare, endSquare);
-    turn = opponentColor;
     printNextTurn();
     return true;
 }

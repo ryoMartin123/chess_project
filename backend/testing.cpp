@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -35,6 +36,14 @@ void printOutputContains(std::string label, std::string output, std::string expe
         std::cout << "Expected output to contain: " << expectedText << "\n";
         std::cout << "Actual output was: " << output << "\n";
     }
+}
+
+void printLegalMoveResult(std::string label, Board &board, std::string startSquare,
+                          std::string expectedSquare, bool expected)
+{
+    std::vector<std::string> moves = board.getLegalMoves(startSquare);
+    bool found = std::find(moves.begin(), moves.end(), expectedSquare) != moves.end();
+    printResult(label, found, expected);
 }
 
 bool movePieceAndCaptureOutput(Board &board, std::string startSquare, std::string endSquare,
@@ -194,6 +203,7 @@ int main()
         board.placePiece(&whiteRook, whiteRook.getType(), whiteRook.getSquare());
         board.placePiece(&blackKing, blackKing.getType(), blackKing.getSquare());
 
+        printLegalMoveResult("White legal moves should include kingside castling", board, "e1", "g1", true);
         printMoveAndMessageResult("White should castle kingside", board, "e1", "g1", true, "White castled kingside!");
     }
 
@@ -380,6 +390,7 @@ int main()
 
         printResult("White setup move should be legal", board.movePiece("b1", "c3"), true);
         printResult("Black pawn should move two squares beside white pawn", board.movePiece("d7", "d5"), true);
+        printLegalMoveResult("White legal moves should include en passant", board, "e5", "d6", true);
         printResult("White should capture en passant", board.movePiece("e5", "d6"), true);
         printResult("White pawn should land on d6", whitePawn.getSquare() == "d6", true);
         printResult("Captured black pawn should leave d5 empty", board.isEmpty("d5"), true);
@@ -477,6 +488,27 @@ int main()
         printResult("Black pawn should not be captured", blackPawn.isCaptured(), false);
     }
 
+    printScenario("En passant prevents a false stalemate");
+    {
+        Board board;
+        King whiteKing("White", false, "f7");
+        Knight whiteKnight("White", false, "f6");
+        Rook whiteRook("White", false, "d3");
+        Pawn whitePawn("White", false, "e2");
+        King blackKing("Black", false, "h8");
+        Pawn blackPawn("Black", false, "d4");
+
+        board.placePiece(&whiteKing, whiteKing.getType(), whiteKing.getSquare());
+        board.placePiece(&whiteKnight, whiteKnight.getType(), whiteKnight.getSquare());
+        board.placePiece(&whiteRook, whiteRook.getType(), whiteRook.getSquare());
+        board.placePiece(&whitePawn, whitePawn.getType(), whitePawn.getSquare());
+        board.placePiece(&blackKing, blackKing.getType(), blackKing.getSquare());
+        board.placePiece(&blackPawn, blackPawn.getType(), blackPawn.getSquare());
+
+        printResult("White should open Black's en passant response", board.movePiece("e2", "e4"), true);
+        printResult("Black should not be stalemated when en passant is legal", board.movePiece("d4", "e3"), true);
+    }
+
     printScenario("Pinned piece cannot move and expose its king");
     {
         Board board;
@@ -490,6 +522,7 @@ int main()
         board.placePiece(&blackKing, blackKing.getType(), blackKing.getSquare());
         board.placePiece(&blackRook, blackRook.getType(), blackRook.getSquare());
 
+        printLegalMoveResult("Pinned rook legal moves should exclude exposing the king", board, "e2", "a2", false);
         printResult("White cannot move pinned rook away from the file", board.movePiece("e2", "a2"), false);
         printResult("Pinned rook should stay on e2", whiteRook.getSquare() == "e2", true);
     }
@@ -561,6 +594,22 @@ int main()
         bool gameOverMove = movePieceAndCaptureOutput(board, "h8", "h7", "", output);
         printResult("Game should be over after promotion checkmate", gameOverMove, false);
         printOutputContains("Game over message after promotion checkmate", output, "The game is already over.");
+    }
+
+    printScenario("A king cannot be captured directly");
+    {
+        Board board;
+        King whiteKing("White", false, "a1");
+        Queen whiteQueen("White", false, "e7");
+        King blackKing("Black", false, "e8");
+
+        board.placePiece(&whiteKing, whiteKing.getType(), whiteKing.getSquare());
+        board.placePiece(&whiteQueen, whiteQueen.getType(), whiteQueen.getSquare());
+        board.placePiece(&blackKing, blackKing.getType(), blackKing.getSquare());
+
+        printLegalMoveResult("Legal moves should exclude the enemy king square", board, "e7", "e8", false);
+        printResult("White cannot capture the black king", board.movePiece("e7", "e8"), false);
+        printResult("Black king should remain on its square", board.getPieceAt("e8") == &blackKing, true);
     }
 
     printScenario("squareIsThreatened handles sliding pieces");
