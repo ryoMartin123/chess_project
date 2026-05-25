@@ -14,9 +14,10 @@ protected:
     std::string color;
     bool captured;
     std::string square;
+    bool hasMoved;
 
 public:
-    Pieces(std::string type, std::string color, bool captured, std::string square);
+    Pieces(std::string type, std::string color, bool captured, std::string square, bool hasMoved);
     virtual ~Pieces() = default;
 
     bool isValid(std::string square);
@@ -27,6 +28,8 @@ public:
     std::string setSquare(std::string newSquare);
     void capture();
     void undoCapture();
+    bool getHasMoved();
+    void markMoved();
 };
 
 class Pawn : public Pieces

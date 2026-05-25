@@ -311,6 +311,37 @@ void Board::printGameOver() {
     std::cout << "The game is already over.\n";
 }
 
+void Board::printIllegalCastle() {
+    std::cout << "You cannot castle!\n";
+}
+
+bool Board::squareIsThreatened(std::string square, std::string enemyColor) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (board[i][j] != nullptr) {
+                Pieces *piece = board[i][j];
+                if (piece -> getColor() == enemyColor) {
+                    int startRow = getRow(piece -> getSquare());
+                    int startCol = getCol(piece -> getSquare());
+                    int endRow = getRow(square);
+                    int endCol = getCol(square);
+                    std::string color = enemyColor;
+                    bool empty = isEmpty(square);
+                    bool enemy = true;
+                    bool clear = pathClear(piece -> getSquare(), square);
+                    bool isThreatened = piece -> isvalidMove(startRow, startCol, endRow, endCol, color, empty, enemy, clear);
+                    if (isThreatened) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+
+
 bool Board::isInCheck(std::string color) {
     Pieces *king = nullptr;
 
@@ -473,6 +504,45 @@ bool Board::createPromotedPiece(std::string piece, std::string color, std::strin
 
     return false;
 }
+
+bool Board::castle(Pieces *king, std::string startSquare, std::string endSquare) {
+
+    std::string color = king -> getColor();
+
+    if (king -> getHasMoved()) {
+        printIllegalCastle();
+        return false;
+    }
+
+    if (color == "White" && getCol(startSquare) < getCol(endSquare) && board[0][7] != nullptr) {
+        Pieces *rook = board[0][7];
+        std::string rookSquare = rook -> getSquare();
+        if (startSquare != "e1" || endSquare != "g1") {
+            return false;
+        }
+        if (rook -> getColor() == "White" && rook -> getType() == "Rook" && rook -> getHasMoved() == false) {
+            if (pathClear(startSquare, rookSquare) && !isInCheck(color)) {
+                board[getRow(endSquare)][getCol(endSquare)] = king;
+                board[getRow(startSquare)][getCol(startSquare)] = nullptr;
+                king -> setSquare(endSquare);
+                if (isInCheck(color) || squareIsThreatened("f1", "Black")) {
+                    board[getRow(startSquare)][getCol(startSquare)] = king;
+                    board[getRow(endSquare)][getCol(endSquare)] = nullptr;
+                    king -> setSquare(startSquare);
+                    return false;
+                }
+                board[getRow("f1")][getCol("f1")] = rook;
+                board[getRow(rookSquare)][getCol(rookSquare)] = nullptr;
+                rook -> setSquare("f1");
+                return true;
+
+            }
+        }
+        return false;
+    }
+    return false;
+}
+
 bool Board::movePiece(std::string startSquare, std::string endSquare, std::string promotedPiece)
 {
 
@@ -524,6 +594,7 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
     bool promotionMove = movingPiece -> getType() == "Pawn" &&
         ((movingPiece -> getColor() == "White" && endRow == 7) ||
          (movingPiece -> getColor() == "Black" && endRow == 0));
+    bool castleMove = movingPiece -> getType() == "King" && startRow == endRow && abs(endCol - startCol) == 2;
 
     
     if (movingPiece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
@@ -556,6 +627,7 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
             printCaptureSuccess(movingPiece, targetPiece, endSquare);
         }
 
+        movingPiece->markMoved();
         printMoveSuccess(movingPiece, startSquare, endSquare);
 
         if (promotionMove) {

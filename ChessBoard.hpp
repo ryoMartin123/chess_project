@@ -34,6 +34,7 @@ private:
     void printPromoted(std::string color, std::string promotedPiece);
     void printInvalidPromotion(std::string piece);
     void printGameOver();
+    void printIllegalCastle();
     bool isValidPromotionChoice(std::string piece);
 
 public:
@@ -56,4 +57,6 @@ public:
     bool isCheckmate(std::string color);
     bool isStalemate(std::string color);
     bool createPromotedPiece(std::string piece, std::string color, std::string square);
+    bool castle(Pieces *king, std::string startSquare, std::string endSquare);
+    bool squareIsThreatened(std::string square, std::string enemyColor);
 };

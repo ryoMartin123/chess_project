@@ -5,50 +5,51 @@
 std::vector<std::string> piece_types = {"Pawn", "Knight", "Bishop", "Rook", "Queen", "King"};
 std::vector<std::string> piece_color = {"White", "Black"};
 
-Pieces::Pieces(std::string type, std::string color, bool captured, std::string square)
+Pieces::Pieces(std::string type, std::string color, bool captured, std::string square, bool hasMoved)
 {
     this->type = type;
     this->color = color;
     this->captured = captured;
     this->square = square;
+    this->hasMoved = false;
 }
 
-Pawn::Pawn(std::string color, bool captured, std::string square) : Pieces("Pawn", color, captured, square)
+Pawn::Pawn(std::string color, bool captured, std::string square) : Pieces("Pawn", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Knight::Knight(std::string color, bool captured, std::string square) : Pieces("Knight", color, captured, square)
+Knight::Knight(std::string color, bool captured, std::string square) : Pieces("Knight", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Bishop::Bishop(std::string color, bool captured, std::string square) : Pieces("Bishop", color, captured, square)
+Bishop::Bishop(std::string color, bool captured, std::string square) : Pieces("Bishop", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Rook::Rook(std::string color, bool captured, std::string square) : Pieces("Rook", color, captured, square)
+Rook::Rook(std::string color, bool captured, std::string square) : Pieces("Rook", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Queen::Queen(std::string color, bool captured, std::string square) : Pieces("Queen", color, captured, square)
+Queen::Queen(std::string color, bool captured, std::string square) : Pieces("Queen", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-King::King(std::string color, bool captured, std::string square) : Pieces("King", color, captured, square)
+King::King(std::string color, bool captured, std::string square) : Pieces("King", color, captured, square, hasMoved)
 {
     this->color = color;
     this->captured = captured;
@@ -76,6 +77,12 @@ bool Pieces::isValid(std::string square)
     return typeIsValid && colorIsValid && squareIsValid;
 }
 
+bool Pieces::getHasMoved() {
+    return hasMoved;
+}
+void Pieces::markMoved() {
+    hasMoved = true;
+}
 std::string Pieces::getType()
 {
     return type;
