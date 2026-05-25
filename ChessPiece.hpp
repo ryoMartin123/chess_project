@@ -17,6 +17,7 @@ protected:
 
 public:
     Pieces(std::string type, std::string color, bool captured, std::string square);
+    virtual ~Pieces() = default;
 
     bool isValid(std::string square);
     std::string getType();

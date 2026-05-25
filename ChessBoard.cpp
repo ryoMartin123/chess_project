@@ -18,6 +18,15 @@ Board::Board()
     }
 
     turn = "White";
+    gameOver = false;
+}
+
+Board::~Board()
+{
+    for (Pieces *piece : promotedPieceVector)
+    {
+        delete piece;
+    }
 }
 
 bool Board::isValid(std::string square)
@@ -66,6 +75,28 @@ int Board::getRow(std::string square)
         }
     }
     return row_index;
+}
+
+std::string Board::getSquare(int row, int col)
+{
+    if (row < 0 || row > 7 || col < 0 || col > 7)
+    {
+        return "";
+    }
+
+    std::string square;
+    square += static_cast<char>('a' + col);
+    square += static_cast<char>('1' + row);
+    return square;
+}
+
+std::string Board::getoponentColor(std::string yourColor) {
+    if (yourColor == "White") {
+        return "Black";
+    }
+    else {
+        return "White";
+    }
 }
 
 bool Board::isEmpty(std::string square)
@@ -255,6 +286,30 @@ void Board::printNoKing()
     std::cout << "There is no king on the board!\n";
 }
 
+void Board::printCheck(std::string color) {
+    std::cout << color << " is in check!\n";
+}
+
+void Board::printCheckMate(std::string color) {
+    std::cout << "Checkmate! " << color << " won!\n";
+}
+
+void Board::printStaleMate(std::string color) {
+    std::cout << color << " caused Stalemate! The game is a draw!\n";
+}
+
+void Board::printPromoted(std::string color, std::string promotedPiece) {
+    std::cout << "Your " << color << " pawn promoted to a " << promotedPiece << "\n";
+}
+
+void Board::printInvalidPromotion(std::string piece) {
+    std::cout << "You cannot promote to a " << piece << "\n";
+    std::cout << "Choose: Queen, Rook, Knight, or Bishop\n";
+}
+
+void Board::printGameOver() {
+    std::cout << "The game is already over.\n";
+}
 
 bool Board::isInCheck(std::string color) {
     Pieces *king = nullptr;
@@ -305,39 +360,157 @@ bool Board::isInCheck(std::string color) {
 
 }
 
-void Board::movePiece(std::string startSquare, std::string endSquare)
+bool Board::hasAnyLegalMove(std::string color) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if ((board[i][j] != nullptr) && (board[i][j] -> getColor() == color)) {
+                Pieces *piece = board[i][j];
+                std::string startSquare = piece -> getSquare();
+
+                for (int x = 0; x < 8; x++) {
+                    for (int y = 0; y < 8; y++) {
+                        std::string endSquare = getSquare(x, y);
+
+                            if (startSquare == endSquare) {
+                                continue;
+                            }
+                            int startRow = getRow(piece -> getSquare());
+                            int startCol = getCol(piece -> getSquare());
+                            int endRow = getRow(endSquare);
+                            int endCol = getCol(endSquare);
+                            std::string movingPieceColor = color;
+                            Pieces * targetPiece = board[endRow][endCol];
+
+                            if (targetPiece != nullptr && targetPiece -> getColor() == color) {
+                                continue;
+                            }
+
+                            bool empty = isEmpty(endSquare);
+                            bool enemy = false;
+                            if (targetPiece != nullptr && targetPiece -> getColor() != color) {
+                                enemy = true;
+                            }
+                            bool clear = pathClear(piece -> getSquare(), endSquare);
+
+                            if(piece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
+                                board[endRow][endCol] = piece;
+                                board[startRow][startCol] = nullptr;
+                                piece -> setSquare(endSquare);
+
+                                bool stillInCheck = isInCheck(color);
+                                board[startRow][startCol] = piece;
+                                board[endRow][endCol] = targetPiece;
+                                piece -> setSquare(startSquare);
+                                if (targetPiece != nullptr) {
+                                    targetPiece -> setSquare(endSquare);
+                                }
+
+                                if (stillInCheck == false) {
+                                    return true;
+                                }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Board::isCheckmate(std::string color) {
+    if (!hasAnyLegalMove(color) && isInCheck(color)) {
+        return true;
+    }
+    return false;
+}
+
+bool Board::isStalemate(std::string color) {
+    if (!hasAnyLegalMove(color) && !isInCheck(color)) {
+        return true;
+    }
+    return false;
+}
+
+bool Board::isValidPromotionChoice(std::string piece) {
+    std::vector<std::string> promotionChoices = {"Knight", "Bishop", "Rook", "Queen"};
+    return std::find(promotionChoices.begin(), promotionChoices.end(), piece) != promotionChoices.end();
+}
+
+bool Board::createPromotedPiece(std::string piece, std::string color, std::string square) {
+    if (!isValidPromotionChoice(piece)) {
+        return false;
+    }
+
+    if (piece == "Queen") {
+        Pieces *newQueen = new Queen(color, false, square);
+        promotedPieceVector.push_back(newQueen);
+        board[getRow(square)][getCol(square)] = newQueen;
+        printPromoted(color, piece);
+        return true;
+    }
+    if (piece == "Rook") {
+        Pieces *newRook = new Rook(color, false, square);
+        promotedPieceVector.push_back(newRook);
+        board[getRow(square)][getCol(square)] = newRook;
+        printPromoted(color, piece);
+        return true;
+    }
+    if (piece == "Knight") {
+        Pieces *newKnight = new Knight(color, false, square);
+        promotedPieceVector.push_back(newKnight);
+        board[getRow(square)][getCol(square)] = newKnight;
+        printPromoted(color, piece);
+        return true;
+    }
+    if (piece == "Bishop") {
+        Pieces *newBishop = new Bishop(color, false, square);
+        promotedPieceVector.push_back(newBishop);
+        board[getRow(square)][getCol(square)] = newBishop;
+        printPromoted(color, piece);
+        return true;
+    }
+
+    return false;
+}
+bool Board::movePiece(std::string startSquare, std::string endSquare, std::string promotedPiece)
 {
+
+    if (gameOver) {
+        printGameOver();
+        return false;
+    }
 
     if (isValid(startSquare) == false)
     {
         printInvalidStartSquare(startSquare);
-        return;
+        return false;
     }
 
     if (isValid(endSquare) == false)
     {
         printInvalidEndSquare(endSquare);
-        return;
+        return false;
     }
 
     if (startSquare == endSquare)
     {
         printSameSquareMove();
-        return;
+        return false;
     }
 
     if (board[getRow(startSquare)][getCol(startSquare)] == nullptr)
     {
         printNoPieceOnSquare(startSquare);
-        return;
+        return false;
     }
 
     Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
-    Pieces * movingPiece = board[getRow(startSquare)][getCol(startSquare)];
+    Pieces *movingPiece = board[getRow(startSquare)][getCol(startSquare)];
 
     if  (movingPiece -> getColor() != turn) {
         printWrongTurn();
-        return;
+        return false;
     }
     
     int startRow = getRow(startSquare);
@@ -348,9 +521,16 @@ void Board::movePiece(std::string startSquare, std::string endSquare)
     bool empty = isEmpty(endSquare);
     bool enemy = isEnemy(endSquare, movingPiece -> getColor());
     bool clear = pathClear(startSquare, endSquare);
+    bool promotionMove = movingPiece -> getType() == "Pawn" &&
+        ((movingPiece -> getColor() == "White" && endRow == 7) ||
+         (movingPiece -> getColor() == "Black" && endRow == 0));
 
     
     if (movingPiece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
+        if (promotionMove && !isValidPromotionChoice(promotedPiece)) {
+            printInvalidPromotion(promotedPiece);
+            return false;
+        }
 
         board[getRow(endSquare)][getCol(endSquare)] = movingPiece;
         board[getRow(startSquare)][getCol(startSquare)] = nullptr;
@@ -367,7 +547,7 @@ void Board::movePiece(std::string startSquare, std::string endSquare)
                 board[getRow(endSquare)][getCol(endSquare)] = targetPiece;
                 targetPiece -> setSquare(endSquare);
             }
-            return;
+            return false;
         }
 
         if (targetPiece != nullptr)
@@ -376,20 +556,36 @@ void Board::movePiece(std::string startSquare, std::string endSquare)
             printCaptureSuccess(movingPiece, targetPiece, endSquare);
         }
 
-        
-        if (turn == "White") {
-            turn = "Black";
-            printMoveSuccess(movingPiece, startSquare, endSquare);
-            printNextTurn();
-            return;
+        printMoveSuccess(movingPiece, startSquare, endSquare);
+
+        if (promotionMove) {
+            if (!createPromotedPiece(promotedPiece, movingPiece -> getColor(), endSquare)) {
+                printInvalidPromotion(promotedPiece);
+                return false;
+            }
         }
-        
-        else {
-            turn = "White";
-            printMoveSuccess(movingPiece, startSquare, endSquare);
-            printNextTurn();
-            return;
+
+        std::string opponentColor = getoponentColor(movingPiece->getColor());
+
+        if (isCheckmate(opponentColor)) {
+            printCheckMate(movingPiece -> getColor());
+            gameOver = true;
+            return true;
         }
+
+        else if (isInCheck(opponentColor)) {
+            printCheck(opponentColor);
+        }
+
+        else if (isStalemate(opponentColor)) {
+            printStaleMate(movingPiece -> getColor());
+            gameOver = true;
+            return true;
+        }
+
+        turn = opponentColor;
+        printNextTurn();
+        return true;
     }
 
     else {
@@ -397,25 +593,20 @@ void Board::movePiece(std::string startSquare, std::string endSquare)
         if (targetPiece != nullptr && targetPiece -> getColor() != movingPiece -> getColor()) {
             printIllegalCapture(movingPiece);
             printStillTurn();
-            return; 
+            return false;
         }
 
         else if (targetPiece != nullptr && movingPiece->getColor() == targetPiece->getColor())
         {
         printOwnPieceOnDestination(endSquare);
         printStillTurn();
-        return;
+        return false;
         }
 
         else {
             printIllegalMove(movingPiece);
             printStillTurn();
-            return;
+            return false;
         }
-
     }
-
 }
-
-
-
