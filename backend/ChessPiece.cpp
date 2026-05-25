@@ -11,45 +11,45 @@ Pieces::Pieces(std::string type, std::string color, bool captured, std::string s
     this->color = color;
     this->captured = captured;
     this->square = square;
-    this->hasMoved = false;
+    this->hasMoved = hasMoved;
 }
 
-Pawn::Pawn(std::string color, bool captured, std::string square) : Pieces("Pawn", color, captured, square, hasMoved)
+Pawn::Pawn(std::string color, bool captured, std::string square) : Pieces("Pawn", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Knight::Knight(std::string color, bool captured, std::string square) : Pieces("Knight", color, captured, square, hasMoved)
+Knight::Knight(std::string color, bool captured, std::string square) : Pieces("Knight", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Bishop::Bishop(std::string color, bool captured, std::string square) : Pieces("Bishop", color, captured, square, hasMoved)
+Bishop::Bishop(std::string color, bool captured, std::string square) : Pieces("Bishop", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Rook::Rook(std::string color, bool captured, std::string square) : Pieces("Rook", color, captured, square, hasMoved)
+Rook::Rook(std::string color, bool captured, std::string square) : Pieces("Rook", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-Queen::Queen(std::string color, bool captured, std::string square) : Pieces("Queen", color, captured, square, hasMoved)
+Queen::Queen(std::string color, bool captured, std::string square) : Pieces("Queen", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
     this->square = square;
 }
 
-King::King(std::string color, bool captured, std::string square) : Pieces("King", color, captured, square, hasMoved)
+King::King(std::string color, bool captured, std::string square) : Pieces("King", color, captured, square, false)
 {
     this->color = color;
     this->captured = captured;
@@ -196,6 +196,14 @@ bool Pieces::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                          std::string color, bool targetEmpty,
                          bool targetEnemy, bool pathClear)
 {
+    (void)startRow;
+    (void)startCol;
+    (void)endRow;
+    (void)endCol;
+    (void)color;
+    (void)targetEmpty;
+    (void)targetEnemy;
+    (void)pathClear;
     return false;
 }
 
@@ -204,6 +212,7 @@ bool Knight::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                          bool targetEnemy, bool pathClear)
 {
     // knight logic
+    (void)color;
     (void)pathClear;
     bool knightMove = false;
 
@@ -230,6 +239,7 @@ bool Bishop::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                          bool targetEnemy, bool pathClear)
 {
     // bishop logic
+    (void)color;
     bool bishopMove = false;
 
     if ((startRow < endRow && startCol != endCol && pathClear) && (abs(endCol - startCol) == abs(endRow - startRow)))
@@ -272,6 +282,7 @@ bool Rook::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                        bool targetEnemy, bool pathClear)
 {
     // rook logic
+    (void)color;
     bool rookMove = false;
 
     if (startRow != endRow && startCol == endCol)
@@ -292,6 +303,7 @@ bool Queen::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                         bool targetEnemy, bool pathClear)
 {
     // queen logic
+    (void)color;
 
     bool queenMove = false;
 
@@ -345,6 +357,8 @@ bool King::isvalidMove(int startRow, int startCol, int endRow, int endCol,
                        bool targetEnemy, bool pathClear)
 {
     // king logic
+    (void)color;
+    (void)pathClear;
 
     bool kingMove = false;
 
