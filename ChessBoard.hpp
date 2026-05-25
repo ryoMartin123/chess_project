@@ -12,6 +12,9 @@ private:
     Pieces *board[8][8];
     std::vector<Pieces *> promotedPieceVector;
     bool gameOver;
+    std::string lastStartSquare;
+    std::string lastEndSquare;
+    Pieces *lastMovedPiece;
 
     void printInvalidSquare(std::string square);
     void printInvalidStartSquare(std::string square);
@@ -34,8 +37,16 @@ private:
     void printPromoted(std::string color, std::string promotedPiece);
     void printInvalidPromotion(std::string piece);
     void printGameOver();
-    void printIllegalCastle();
+    void printIllegalCastle(std::string reason);
+    void printSuccessfulCastle(std::string color, std::string startSquare, std::string endSquare);
     bool isValidPromotionChoice(std::string piece);
+
+    void rememberLastMove(Pieces *piece, std::string startSquare, std::string endSquare);
+    bool castle(Pieces *king, std::string startSquare, std::string endSquare);
+    bool canEnPassant(Pieces *movingPiece, std::string startSquare, std::string endSquare);
+    bool createPromotedPiece(std::string piece, std::string color, std::string square);
+    bool moveLeavesKingInCheck(Pieces *movingPiece, Pieces *targetPiece, std::string startSquare, std::string endSquare);
+    bool finishSuccessfulMove(Pieces *movingPiece, std::string startSquare, std::string endSquare);
 
 public:
     Board();
@@ -56,7 +67,5 @@ public:
     bool hasAnyLegalMove(std::string color);
     bool isCheckmate(std::string color);
     bool isStalemate(std::string color);
-    bool createPromotedPiece(std::string piece, std::string color, std::string square);
-    bool castle(Pieces *king, std::string startSquare, std::string endSquare);
     bool squareIsThreatened(std::string square, std::string enemyColor);
 };
