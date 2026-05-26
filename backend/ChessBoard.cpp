@@ -220,6 +220,30 @@ void Board::placePiece(Pieces *piece, std::string pieceType, std::string square)
     }
 }
 
+bool Board::removePiece(std::string square)
+{
+    if (!isValid(square))
+    {
+        return false;
+    }
+
+    Pieces *targetPiece = board[getRow(square)][getCol(square)];
+    if (targetPiece == nullptr)
+    {
+        return false;
+    }
+
+    targetPiece->capture();
+    board[getRow(square)][getCol(square)] = nullptr;
+    if (targetPiece == lastMovedPiece)
+    {
+        lastMovedPiece = nullptr;
+        lastStartSquare = "";
+        lastEndSquare = "";
+    }
+    return true;
+}
+
 void Board::printInvalidSquare(std::string square)
 {
     std::cout << square << " is not a valid square.\n";

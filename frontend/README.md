@@ -8,7 +8,7 @@ Start the C++ server:
 
 ```sh
 cd ..\backend
-g++.exe -std=c++17 ApiServer.cpp ChessBoard.cpp ChessPiece.cpp Move.cpp -lws2_32 -o chess_backend.exe
+g++.exe -std=c++17 ApiServer.cpp GameState.cpp CardManager.cpp ChessBoard.cpp ChessPiece.cpp Move.cpp -lws2_32 -o chess_backend.exe
 .\chess_backend.exe
 ```
 
@@ -22,7 +22,7 @@ Vite proxies `/api` to `http://127.0.0.1:8787`. To use a backend on another orig
 
 ```sh
 VITE_CHESS_API_URL=http://127.0.0.1:8787
-VITE_API_TIMEOUT_MS=1200
+VITE_API_TIMEOUT_MS=5000
 ```
 
 ## Development Mock

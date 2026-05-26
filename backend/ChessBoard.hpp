@@ -63,6 +63,7 @@ public:
     bool isEnemy(std::string square, std::string color);
     bool pathClear(std::string startSquare, std::string endSquare);
     void placePiece(Pieces *piece, std::string pieceType, std::string square);
+    bool removePiece(std::string square);
     Pieces *getPieceAt(std::string square);
     std::string getTurn();
     void setTurn(std::string nextTurn);

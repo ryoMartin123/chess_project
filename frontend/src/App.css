@@ -9,7 +9,7 @@
 
 /* ── Header ── */
 .app-header {
-  width: min(760px, 100%);
+  width: min(900px, 100%);
   margin: 0 auto 36px;
   display: flex;
   align-items: flex-start;
@@ -488,6 +488,594 @@
   outline-offset: 2px;
 }
 
+/* ── Targeting badge ── */
+.targeting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+  animation: targetingPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes targetingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* ── Board targeting mode ── */
+
+/* Shared ring pseudo-element setup */
+.sq-destroy-target::after,
+.sq-charge-pick::after,
+.sq-charge-hop::after,
+.sq-charge-land::after,
+.sq-onslaught-pick::after,
+.sq-onslaught-selected::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Dimmed squares during any targeting mode */
+.sq-card-dim .piece {
+  opacity: 0.25;
+  transition: opacity 150ms ease;
+}
+
+/* Destroy Pawn — red pulsing ring on enemy pawns */
+.sq-destroy-target::after {
+  inset: 8%;
+  border: 3px solid rgba(239, 68, 68, 0.9);
+  background: rgba(239, 68, 68, 0.12);
+  animation: ringPulseRed 1.2s ease-in-out infinite;
+}
+.sq-destroy-target {
+  cursor: crosshair;
+}
+
+@keyframes ringPulseRed {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.08); opacity: 0.7; }
+}
+
+/* Charge step 1 — cyan ring on friendly knights */
+.sq-charge-pick::after {
+  inset: 8%;
+  border: 3px solid rgba(34, 211, 238, 0.9);
+  background: rgba(34, 211, 238, 0.1);
+  animation: ringPulseCyan 1.2s ease-in-out infinite;
+}
+.sq-charge-pick {
+  cursor: crosshair;
+}
+
+@keyframes ringPulseCyan {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.08); opacity: 0.65; }
+}
+
+/* Charge step 2 — cyan dot on valid first hops */
+.sq-charge-hop::after {
+  inset: 30%;
+  background: rgba(34, 211, 238, 0.55);
+  transition: transform 120ms ease;
+}
+.sq-charge-hop {
+  cursor: crosshair;
+}
+.sq-charge-hop:hover::after {
+  transform: scale(1.2);
+}
+
+/* Charge step 3 — cyan ring + streak on valid landing squares */
+.sq-charge-land {
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.sq-charge-land::after {
+  inset: 8%;
+  border: 3px solid rgba(34, 211, 238, 0.75);
+  background: rgba(34, 211, 238, 0.08);
+  animation: ringPulseCyan 1.4s ease-in-out infinite;
+}
+
+/* diagonal streak that sweeps top-left → bottom-right */
+.sq-charge-land::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -25%;
+  width: 25%;
+  height: 220%;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(34, 211, 238, 0.3),
+    rgba(200, 245, 255, 0.85),
+    rgba(34, 211, 238, 0.3),
+    transparent
+  );
+  transform: rotate(-28deg) translateX(-300%);
+  animation: chargeStreak 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+@keyframes chargeStreak {
+  0%, 20% {
+    transform: rotate(-28deg) translateX(-300%);
+    opacity: 1;
+  }
+  70% {
+    transform: rotate(-28deg) translateX(700%);
+    opacity: 1;
+  }
+  71%, 100% {
+    transform: rotate(-28deg) translateX(-300%);
+    opacity: 0;
+  }
+}
+
+/* Charge — origin square (selected knight's square, step 2+) */
+.sq-charge-origin {
+  background: rgba(34, 211, 238, 0.55) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(34, 211, 238, 1),
+    inset 0 0 18px rgba(34, 211, 238, 0.4),
+    0 0 14px rgba(34, 211, 238, 0.5);
+}
+
+/* Charge — intermediate hop square (confirmed first hop) */
+.sq-charge-mid {
+  background: rgba(34, 211, 238, 0.28) !important;
+  box-shadow: inset 0 0 0 3px rgba(34, 211, 238, 0.75);
+}
+
+/* Onslaught — eligible pawn (can move forward) */
+.sq-onslaught-pick::after {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  z-index: 3;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.55);
+  transition: transform 120ms ease;
+  pointer-events: none;
+}
+.sq-onslaught-pick {
+  cursor: crosshair;
+}
+.sq-onslaught-pick:hover::after {
+  transform: scale(1.2);
+}
+
+/* Onslaught — selected pawn (toggled in) */
+.sq-onslaught-selected {
+  background: rgba(251, 191, 36, 0.22) !important;
+  box-shadow: inset 0 0 0 3px rgba(251, 191, 36, 0.8);
+  cursor: crosshair;
+}
+
+/* Onslaught — green ring on pawns that can step forward */
+.sq-onslaught-pick::after {
+  inset: 8%;
+  border: 3px solid rgba(74, 222, 128, 0.85);
+  background: rgba(74, 222, 128, 0.1);
+  animation: ringPulseGreen 1.2s ease-in-out infinite;
+}
+.sq-onslaught-pick,
+.sq-onslaught-selected {
+  cursor: crosshair;
+}
+
+.sq-onslaught-selected {
+  background: rgba(74, 222, 128, 0.28) !important;
+  box-shadow: inset 0 0 0 4px rgba(74, 222, 128, 0.75);
+}
+.sq-onslaught-selected::after {
+  inset: 28%;
+  background: rgba(74, 222, 128, 0.75);
+}
+
+@keyframes ringPulseGreen {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.08); opacity: 0.65; }
+}
+
+/* ── Card area ── */
+.card-area {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 16px;
+}
+
+/* ── Player hand panel ── */
+.player-hand {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0;
+  padding: 16px 24px 20px;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.player-hand.active-hand {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hand-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #475569;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hand-dot.white {
+  background: #f8fafc;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+}
+
+.hand-dot.black {
+  background: #374151;
+  border: 1.5px solid #4b5563;
+}
+
+.hand-player-name {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.active-hand .hand-player-name {
+  color: #94a3b8;
+}
+
+.hand-counts {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 12px;
+  color: #334155;
+}
+
+.hand-count-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.hand-count-icon {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.hand-count-sep {
+  opacity: 0.3;
+}
+
+.hand-turn-marker {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.hand-empty {
+  font-size: 13px;
+  color: #1e293b;
+  text-align: center;
+  padding: 16px 0 4px;
+  font-style: italic;
+}
+
+.hand-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Card tile ── */
+.card {
+  flex: 0 0 200px;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: linear-gradient(160deg, #151e2b 0%, #111827 100%);
+  color: #475569;
+  cursor: default;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
+  position: relative;
+}
+
+.card.card-playable {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #94a3b8;
+  background: linear-gradient(160deg, #1a2030 0%, #141b27 100%);
+}
+
+.card.card-playable:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15), 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.card.card-targeting {
+  border-color: rgba(245, 158, 11, 0.9);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25), 0 6px 16px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(160deg, #1e2530 0%, #161e2c 100%);
+  color: #cbd5e1;
+}
+
+.card.card-inactive {
+  opacity: 0.45;
+}
+
+.card-level {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.3px;
+}
+
+.card-playable .card-level,
+.card-targeting .card-level {
+  color: rgba(245, 158, 11, 0.7);
+}
+
+/* ── Card art ── */
+.card-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 2px 0;
+}
+
+.card-art-piece {
+  font-family: "Segoe UI Symbol", "DejaVu Serif", "Times New Roman", serif;
+  font-size: 30px;
+  line-height: 1;
+  color: #334155;
+}
+
+.card-playable .card-art-piece,
+.card-targeting .card-art-piece {
+  color: #64748b;
+}
+
+.card-art-x {
+  position: absolute;
+  font-size: 36px;
+  font-weight: 900;
+  color: #ef4444;
+  opacity: 0.75;
+  line-height: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);
+}
+
+.card-playable .card-art-x,
+.card-targeting .card-art-x {
+  opacity: 0.9;
+}
+
+.card-art-knight {
+  font-size: 32px;
+}
+
+.card-art-pawns {
+  font-size: 20px;
+  letter-spacing: -3px;
+}
+
+.card-art-pawns {
+  font-size: 25px;
+  letter-spacing: -9px;
+  padding-right: 8px;
+}
+
+.card-art-charge {
+  position: absolute;
+  bottom: 2px;
+  right: 0;
+  font-size: 14px;
+  font-weight: 900;
+  color: #22d3ee;
+  opacity: 0.65;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.card-playable .card-art-charge,
+.card-targeting .card-art-charge {
+  opacity: 0.9;
+}
+
+.card-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
+.card-playable .card-name,
+.card-targeting .card-name {
+  color: #cbd5e1;
+}
+
+.card-desc {
+  font-size: 10px;
+  color: #334155;
+  text-align: center;
+  line-height: 1.4;
+  padding: 0 2px;
+}
+
+.card-playable .card-desc,
+.card-targeting .card-desc {
+  color: #475569;
+}
+
+.card-timing {
+  font-size: 10px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.2px;
+  margin-top: auto;
+}
+
+.card-playable .card-timing {
+  color: rgba(245, 158, 11, 0.7);
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+/* ── Card action buttons ── */
+.card-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.card-btn {
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 130ms ease;
+}
+
+.card-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.card-btn-play:not(:disabled) {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+  color: rgba(245, 158, 11, 0.8);
+}
+
+.card-btn-play:not(:disabled):hover {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fbbf24;
+}
+
+.card-btn-discard:not(:disabled) {
+  color: #475569;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.card-btn-discard:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #64748b;
+}
+
+.card-btn-cancel {
+  width: 100%;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+}
+
+.card-btn-cancel:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.card-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* ── Drag ghost ── */
+.drag-ghost {
+  position: fixed;
+  left: -1000px;
+  top: -1000px;
+  z-index: 200;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  font-family: "Segoe UI Symbol", "DejaVu Serif", "Times New Roman", serif;
+  font-size: clamp(32px, 8.2vw, 58px);
+  line-height: 1;
+  user-select: none;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.75));
+  transform: scale(1.14);
+  transform-origin: center center;
+}
+
+.piece.drag-hidden {
+  opacity: 0;
+}
+
+/* Grabbing cursor while dragging */
+.app.is-dragging,
+.app.is-dragging * {
+  cursor: grabbing !important;
+}
+
+/* Grab cursor on pieces that can be dragged */
+.square:not(:disabled):has(.white-piece:not(.drag-hidden)),
+.square:not(:disabled):has(.black-piece:not(.drag-hidden)) {
+  cursor: grab;
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .app {
@@ -512,6 +1100,17 @@
   .board {
     width: min(100%, calc(100vw - 28px));
     border-width: 6px;
+  }
+
+  .card-area {
+    left: 0;
+    transform: none;
+  }
+
+  .card {
+    flex: 1;
+    min-width: 140px;
+    width: auto;
   }
 
   .promotion-dialog {
