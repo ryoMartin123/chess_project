@@ -7,6 +7,23 @@
 std::vector<int> row = {0, 1, 2, 3, 4, 5, 6, 7};
 std::vector<int> col = {0, 1, 2, 3, 4, 5, 6, 7};
 
+namespace
+{
+bool pieceThreatensColor(Pieces *piece, const std::string &color)
+{
+    return piece != nullptr && (piece->getColor() != color || piece->isNeutral());
+}
+
+bool canCaptureTarget(Pieces *movingPiece, Pieces *targetPiece)
+{
+    if (movingPiece == nullptr || targetPiece == nullptr || targetPiece->getType() == "King")
+    {
+        return false;
+    }
+    return movingPiece->isNeutral() || targetPiece->isNeutral() || movingPiece->getColor() != targetPiece->getColor();
+}
+}
+
 Board::Board()
 {
     for (int i = 0; i < 8; i++)
@@ -140,6 +157,11 @@ void Board::setTurn(std::string nextTurn)
 bool Board::isGameOver()
 {
     return gameOver;
+}
+
+void Board::setGameOver(bool value)
+{
+    gameOver = value;
 }
 
 bool Board::pathClear(std::string startSquare, std::string endSquare)
@@ -301,12 +323,21 @@ void Board::printOwnPieceOnDestination(std::string square)
 
 void Board::printMoveSuccess(Pieces *piece, std::string startSquare, std::string endSquare)
 {
-    std::cout << "You moved your " << piece->getColor() << " " << piece->getType() << " from " << startSquare << " to " << endSquare << ".\n";
+    std::string pieceDesc = piece->isNeutral()
+        ? "the neutral " + piece->getType()
+        : "your " + piece->getColor() + " " + piece->getType();
+    std::cout << "You moved " << pieceDesc << " from " << startSquare << " to " << endSquare << ".\n";
 }
 
 void Board::printCaptureSuccess(Pieces *attacker, Pieces *target, std::string endSquare)
 {
-    std::cout << "Your " << attacker->getColor() << " " << attacker->getType() << " captured the " << target->getColor() << " " << target->getType() << " on " << endSquare << ".\n";
+    std::string attackerDesc = attacker->isNeutral()
+        ? "The neutral " + attacker->getType()
+        : "Your " + attacker->getColor() + " " + attacker->getType();
+    std::string targetDesc = target->isNeutral()
+        ? "neutral " + target->getType()
+        : target->getColor() + " " + target->getType();
+    std::cout << attackerDesc << " captured the " << targetDesc << " on " << endSquare << ".\n";
 }
 
 void Board::printSelfCheckMove()
@@ -366,28 +397,32 @@ bool Board::squareIsThreatened(std::string square, std::string enemyColor) {
         for (int j = 0; j < 8; j++) {
             if (board[i][j] != nullptr) {
                 Pieces *piece = board[i][j];
-                if (piece -> getColor() == enemyColor) {
+                if (piece->getColor() == enemyColor || piece->isNeutral()) {
                     int startRow = getRow(piece -> getSquare());
                     int startCol = getCol(piece -> getSquare());
                     int endRow = getRow(square);
                     int endCol = getCol(square);
+                    const std::string attackColor = piece->getColor();
 
                     if (piece->getType() == "Pawn") {
                         bool attacksDiagonal = abs(endCol - startCol) == 1;
-                        if (enemyColor == "White" && attacksDiagonal && endRow == startRow + 1) {
+                        if (attackColor == "White" && attacksDiagonal && endRow == startRow + 1) {
                             return true;
                         }
-                        if (enemyColor == "Black" && attacksDiagonal && endRow == startRow - 1) {
+                        if (attackColor == "Black" && attacksDiagonal && endRow == startRow - 1) {
                             return true;
                         }
                         continue;
                     }
 
-                    std::string color = enemyColor;
+                    std::string color = attackColor;
                     bool empty = isEmpty(square);
                     bool enemy = true;
                     bool clear = pathClear(piece -> getSquare(), square);
                     bool isThreatened = piece -> isvalidMove(startRow, startCol, endRow, endCol, color, empty, enemy, clear);
+                    if (!isThreatened && piece->isWarlord() && piece->getType() == "King") {
+                        isThreatened = canWarlordTwoStep(piece, piece->getSquare(), square);
+                    }
                     if (isThreatened) {
                         return true;
                     }
@@ -424,7 +459,7 @@ bool Board::isInCheck(std::string color) {
         {
             if (board[i][j] != nullptr) {
                 Pieces *piece = board[i][j];
-                if (piece -> getColor() != color) {
+                if (pieceThreatensColor(piece, color)) {
                     int startRow = getRow(piece -> getSquare());
                     int startCol = getCol(piece -> getSquare());
                     int endRow = getRow(king -> getSquare());
@@ -434,6 +469,10 @@ bool Board::isInCheck(std::string color) {
                     bool enemy = true;
                     bool clear = pathClear(piece -> getSquare(), king -> getSquare());
                     bool check = piece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear);
+
+                    if (!check && piece->isWarlord() && piece->getType() == "King") {
+                        check = canWarlordTwoStep(piece, piece->getSquare(), king->getSquare());
+                    }
 
                     if (check) {
                         return true;
@@ -745,14 +784,41 @@ bool Board::canCastleSafely(Pieces *king, std::string startSquare, std::string e
     return !landsInCheck;
 }
 
+bool Board::canWarlordTwoStep(Pieces *movingPiece, std::string startSquare, std::string endSquare)
+{
+    int startRow = getRow(startSquare);
+    int startCol = getCol(startSquare);
+    int endRow = getRow(endSquare);
+    int endCol = getCol(endSquare);
+
+    if (abs(endRow - startRow) > 2 || abs(endCol - startCol) > 2) return false;
+    // 1-step moves are handled by normal king isvalidMove
+    if (abs(endRow - startRow) <= 1 && abs(endCol - startCol) <= 1) return false;
+
+    for (int dr = -1; dr <= 1; dr++) {
+        for (int dc = -1; dc <= 1; dc++) {
+            if (dr == 0 && dc == 0) continue;
+            int midRow = startRow + dr;
+            int midCol = startCol + dc;
+            if (midRow < 0 || midRow > 7 || midCol < 0 || midCol > 7) continue;
+            std::string midSquare = getSquare(midRow, midCol);
+            if (!isEmpty(midSquare)) continue;
+            // endSquare must be reachable in one step from midSquare
+            if (abs(endRow - midRow) <= 1 && abs(endCol - midCol) <= 1) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool Board::isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare, std::string endSquare) {
     if (movingPiece == nullptr || !isValid(startSquare) || !isValid(endSquare) || startSquare == endSquare) {
         return false;
     }
 
     Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
-    if (targetPiece != nullptr &&
-        (targetPiece->getColor() == movingPiece->getColor() || targetPiece->getType() == "King")) {
+    if (targetPiece != nullptr && !canCaptureTarget(movingPiece, targetPiece)) {
         return false;
     }
 
@@ -763,7 +829,13 @@ bool Board::isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare,
     bool castleMove = movingPiece->getType() == "King" && startRow == endRow && abs(endCol - startCol) == 2;
 
     if (castleMove) {
-        return canCastleSafely(movingPiece, startSquare, endSquare);
+        if (canCastleSafely(movingPiece, startSquare, endSquare)) {
+            return true;
+        }
+        if (!movingPiece->isWarlord()) {
+            return false;
+        }
+        // Warlord king: fall through to check 2-step
     }
 
     bool validEnPassant = canEnPassant(movingPiece, startSquare, endSquare);
@@ -774,10 +846,12 @@ bool Board::isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare,
         endCol,
         movingPiece->getColor(),
         isEmpty(endSquare),
-        targetPiece != nullptr && targetPiece->getColor() != movingPiece->getColor(),
+        canCaptureTarget(movingPiece, targetPiece),
         pathClear(startSquare, endSquare));
+    bool validWarlordStep = movingPiece->isWarlord() && movingPiece->getType() == "King" &&
+        canWarlordTwoStep(movingPiece, startSquare, endSquare);
 
-    if (!validMove && !validEnPassant) {
+    if (!validMove && !validEnPassant && !validWarlordStep) {
         return false;
     }
 
@@ -790,7 +864,7 @@ bool Board::isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare,
     board[endRow][endCol] = movingPiece;
     board[startRow][startCol] = nullptr;
     movingPiece->setSquare(endSquare);
-    bool leavesKingInCheck = isInCheck(movingPiece->getColor());
+    bool leavesKingInCheck = isInCheck(movingPiece->isNeutral() ? turn : movingPiece->getColor());
     board[startRow][startCol] = movingPiece;
     board[endRow][endCol] = targetPiece;
     movingPiece->setSquare(startSquare);
@@ -805,7 +879,7 @@ std::vector<std::string> Board::getLegalMoves(std::string startSquare) {
     std::vector<std::string> moves;
     Pieces *movingPiece = getPieceAt(startSquare);
 
-    if (gameOver || movingPiece == nullptr || movingPiece->getColor() != turn) {
+    if (gameOver || movingPiece == nullptr || (movingPiece->getColor() != turn && !movingPiece->isNeutral())) {
         return moves;
     }
 
@@ -879,14 +953,12 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
     Pieces *targetPiece = board[getRow(endSquare)][getCol(endSquare)];
     Pieces *movingPiece = board[getRow(startSquare)][getCol(startSquare)];
 
-    if  (movingPiece -> getColor() != turn) {
+    if (movingPiece->getColor() != turn && !movingPiece->isNeutral()) {
         printWrongTurn();
         return false;
     }
 
-    if (targetPiece != nullptr &&
-        targetPiece->getColor() != movingPiece->getColor() &&
-        targetPiece->getType() == "King") {
+    if (targetPiece != nullptr && targetPiece->getType() == "King") {
         printIllegalCapture(movingPiece);
         printStillTurn();
         return false;
@@ -898,7 +970,7 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
     int endCol = getCol(endSquare);
     std::string movingPieceColor = movingPiece -> getColor();
     bool empty = isEmpty(endSquare);
-    bool enemy = isEnemy(endSquare, movingPiece -> getColor());
+    bool enemy = canCaptureTarget(movingPiece, targetPiece);
     bool clear = pathClear(startSquare, endSquare);
     bool promotionMove = movingPiece -> getType() == "Pawn" &&
         ((movingPiece -> getColor() == "White" && endRow == 7) ||
@@ -940,7 +1012,11 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
         return finishSuccessfulMove(movingPiece, startSquare, endSquare);
     }
 
-    if (movingPiece -> isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear)) {
+    bool validWarlordStep = movingPiece->isWarlord() && movingPiece->getType() == "King" &&
+        canWarlordTwoStep(movingPiece, startSquare, endSquare);
+    bool validMove = movingPiece->isvalidMove(startRow, startCol, endRow, endCol, movingPieceColor, empty, enemy, clear);
+
+    if (validMove || validWarlordStep) {
         if (promotionMove && !isValidPromotionChoice(promotedPiece)) {
             printInvalidPromotion(promotedPiece);
             return false;
@@ -975,13 +1051,13 @@ bool Board::movePiece(std::string startSquare, std::string endSquare, std::strin
 
     else {
 
-        if (targetPiece != nullptr && targetPiece -> getColor() != movingPiece -> getColor()) {
+        if (targetPiece != nullptr && canCaptureTarget(movingPiece, targetPiece)) {
             printIllegalCapture(movingPiece);
             printStillTurn();
             return false;
         }
 
-        else if (targetPiece != nullptr && movingPiece->getColor() == targetPiece->getColor())
+        else if (targetPiece != nullptr)
         {
         printOwnPieceOnDestination(endSquare);
         printStillTurn();
@@ -1004,7 +1080,7 @@ void Board::rememberLastMove(Pieces *piece, std::string startSquare, std::string
 
 bool Board::finishSuccessfulMove(Pieces *movingPiece, std::string startSquare, std::string endSquare)
 {
-    std::string opponentColor = getoponentColor(movingPiece->getColor());
+    std::string opponentColor = getoponentColor(turn);
     rememberLastMove(movingPiece, startSquare, endSquare);
     turn = opponentColor;
 

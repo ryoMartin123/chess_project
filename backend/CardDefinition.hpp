@@ -13,4 +13,5 @@ struct CardDefinition
     CardTargetRequirement targetRequirement;
     CardEffectType effect;
     bool countsAsOwnTurnCard;
+    std::string rulesText;
 };

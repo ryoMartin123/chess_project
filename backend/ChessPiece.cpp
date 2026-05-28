@@ -12,6 +12,8 @@ Pieces::Pieces(std::string type, std::string color, bool captured, std::string s
     this->captured = captured;
     this->square = square;
     this->hasMoved = hasMoved;
+    this->neutral = false;
+    this->warlord = false;
 }
 
 Pawn::Pawn(std::string color, bool captured, std::string square) : Pieces("Pawn", color, captured, square, false)
@@ -82,6 +84,21 @@ bool Pieces::getHasMoved() {
 }
 void Pieces::markMoved() {
     hasMoved = true;
+}
+void Pieces::setHasMoved(bool moved) {
+    hasMoved = moved;
+}
+bool Pieces::isNeutral() const {
+    return neutral;
+}
+void Pieces::setNeutral(bool neutral) {
+    this->neutral = neutral;
+}
+bool Pieces::isWarlord() const {
+    return warlord;
+}
+void Pieces::setWarlord(bool warlord) {
+    this->warlord = warlord;
 }
 std::string Pieces::getType()
 {

@@ -45,6 +45,7 @@ private:
     bool castle(Pieces *king, std::string startSquare, std::string endSquare);
     bool canCastleSafely(Pieces *king, std::string startSquare, std::string endSquare);
     bool canEnPassant(Pieces *movingPiece, std::string startSquare, std::string endSquare);
+    bool canWarlordTwoStep(Pieces *movingPiece, std::string startSquare, std::string endSquare);
     bool isLegalMoveForPosition(Pieces *movingPiece, std::string startSquare, std::string endSquare);
     bool createPromotedPiece(std::string piece, std::string color, std::string square);
     bool moveLeavesKingInCheck(Pieces *movingPiece, Pieces *targetPiece, std::string startSquare, std::string endSquare);
@@ -68,6 +69,7 @@ public:
     std::string getTurn();
     void setTurn(std::string nextTurn);
     bool isGameOver();
+    void setGameOver(bool value);
     std::vector<std::string> getLegalMoves(std::string startSquare);
     bool movePiece(std::string startSquare, std::string endSquare, std::string promotionPiece = "");
 

@@ -1,12 +1,15 @@
 #include "CardManager.hpp"
 
 #include <algorithm>
+#include <random>
 #include <sstream>
 
 #include "GameState.hpp"
 
 namespace
 {
+constexpr size_t STARTING_HAND_SIZE = 0;
+
 CardResult failure(const std::string &message, const CardAction &action)
 {
     return {false, message, action.cardId, action.targetSquare, ""};
@@ -43,6 +46,16 @@ bool containsSquare(const std::vector<std::string> &squares, const std::string &
     return std::find(squares.begin(), squares.end(), square) != squares.end();
 }
 
+bool isFriendlyOrNeutral(Pieces *piece, const std::string &player)
+{
+    return piece != nullptr && (piece->getColor() == player || piece->isNeutral());
+}
+
+bool isEnemyOrNeutral(Pieces *piece, const std::string &player)
+{
+    return piece != nullptr && (piece->getColor() != player || piece->isNeutral());
+}
+
 std::vector<std::string> orderedPawnSquares(Board &board, const std::vector<std::string> &squares, const std::string &player)
 {
     std::vector<std::string> orderedSquares = squares;
@@ -61,36 +74,58 @@ void consumeCard(PlayerCardState &playerState, const CardDefinition &definition)
     auto card = std::find(playerState.hand.begin(), playerState.hand.end(), definition.id);
     playerState.hand.erase(card);
     playerState.discardPile.push_back(definition.id);
-    if (definition.countsAsOwnTurnCard)
-    {
-        playerState.cardPlayedOnOwnTurn = true;
-    }
+    playerState.cardPlayedOnOwnTurn = true;
 }
 
-void finishOwnTurnCard(GameState &game, const std::string &player, const CardDefinition &definition)
+std::string finishTurnCard(GameState &game, const std::string &player, const CardDefinition &definition)
 {
     if (!definition.countsAsOwnTurnCard)
     {
-        return;
+        return "";
+    }
+
+    std::string drawMessage;
+    PlayerCardState &playerState = game.getCardState(player);
+    if (!playerState.drawnThisTurn && !playerState.deck.empty() && playerState.hand.size() < 5)
+    {
+        const std::string drawnCardId = playerState.deck.back();
+        playerState.deck.pop_back();
+        playerState.hand.push_back(drawnCardId);
+        playerState.drawnThisTurn = true;
+        drawMessage = player + " drew " + drawnCardId + " at the end of their turn.";
     }
 
     const std::string nextPlayer = game.getBoard().getoponentColor(player);
     game.getBoard().setTurn(nextPlayer);
     game.startTurn(nextPlayer);
+    return drawMessage;
+}
+
+void drawCard(PlayerCardState &playerState)
+{
+    if (playerState.deck.empty())
+    {
+        return;
+    }
+
+    const std::string drawnCardId = playerState.deck.back();
+    playerState.deck.pop_back();
+    playerState.hand.push_back(drawnCardId);
 }
 }
 
 CardManager::CardManager()
 {
-    CardDefinition destroyPawn{
-        "destroy_pawn",
-        "Destroy Pawn",
-        1,
-        CardTiming::AS_OWN_TURN,
-        CardTargetRequirement::ENEMY_PAWN,
+    CardDefinition disintegrate{
+        "disintegrate",
+        "Disintegrate",
+        2,
+        CardTiming::BEFORE_OWN_TURN,
+        CardTargetRequirement::FRIENDLY_NON_KING,
         CardEffectType::DESTROY_TARGET,
-        true};
-    definitions.emplace(destroyPawn.id, destroyPawn);
+        false,
+        "Played before your move. Destroy any one of your pieces except your king. This does not spend your normal move."};
+    definitions.emplace(disintegrate.id, disintegrate);
 
     CardDefinition charge{
         "charge",
@@ -99,7 +134,8 @@ CardManager::CardManager()
         CardTiming::AS_OWN_TURN,
         CardTargetRequirement::FRIENDLY_KNIGHT,
         CardEffectType::CHARGE_KNIGHT,
-        true};
+        true,
+        "Played as your turn. Choose one of your knights. It makes two legal knight moves in a row, but the first move cannot capture."};
     definitions.emplace(charge.id, charge);
 
     CardDefinition onslaught{
@@ -109,10 +145,65 @@ CardManager::CardManager()
         CardTiming::AS_OWN_TURN,
         CardTargetRequirement::FRIENDLY_PAWNS,
         CardEffectType::MOVE_PAWNS,
-        true
+        true,
+        "Played as your turn. Move any number of your pawns one square forward. They cannot capture, and pawns on their starting square still move only one square. Any pawn that reaches the last rank may promote."
     };
     definitions.emplace(onslaught.id, onslaught);
 
+    CardDefinition knightmare{
+        "knightmare",
+        "Knightmare",
+        10,
+        CardTiming::AFTER_OPPONENT_TURN,
+        CardTargetRequirement::NONE,
+        CardEffectType::CANCEL_LAST_ACTION,
+        false,
+        "Played immediately after your opponent's turn. Cancel their last move or card. They replay their turn, but cannot repeat the exact same move with the same piece or replay the same card."};
+    definitions.emplace(knightmare.id, knightmare);
+
+    CardDefinition think_again{
+        "think_again",
+        "Think Again!",
+        10,
+        CardTiming::AFTER_OPPONENT_TURN,
+        CardTargetRequirement::NONE,
+        CardEffectType::CANCEL_LAST_ACTION,
+        false,
+        "Played immediately after your opponent's turn. Cancel their last move or card. They replay their turn, but cannot repeat the exact same move with the same piece or replay the same card."};
+    definitions.emplace(think_again.id, think_again);
+
+    CardDefinition bog{
+        "bog",
+        "Bog",
+        4,
+        CardTiming::AFTER_OPPONENT_TURN,
+        CardTargetRequirement::NONE,
+        CardEffectType::BOG_MOVE,
+        false,
+        "Played immediately after your opponent's turn. If they moved a rook, bishop, or queen two or more squares, that move is shortened so the piece stops after one square in the chosen direction. This does not spend your turn."};
+    definitions.emplace(bog.id, bog);
+
+    CardDefinition neutrality{
+        "neutrality",
+        "Neutrality",
+        9,
+        CardTiming::AFTER_OWN_TURN,
+        CardTargetRequirement::ENEMY_NON_KING_QUEEN,
+        CardEffectType::APPLY_NEUTRALITY,
+        false,
+        "Played after your move. Choose one opponent piece except a king or queen. It becomes neutral and gets a marker. A neutral piece can check either king and, when that piece moves, it can capture pieces of any color. Cards that affect friendly or enemy pieces can also affect neutral pieces. This continuing effect lasts until the marked piece is captured or the continuing effect is removed by another card."};
+    definitions.emplace(neutrality.id, neutrality);
+
+    CardDefinition warlord{
+        "warlord",
+        "Warlord",
+        10,
+        CardTiming::AS_OWN_TURN,
+        CardTargetRequirement::FRIENDLY_KING,
+        CardEffectType::APPLY_WARLORD,
+        true,
+        "Played as your turn. Your King becomes a Warlord — it may move up to 2 squares per turn in any direction or combination. Making a capture ends its move for that turn. This continuing effect lasts until the Warlord is captured or the game ends."};
+    definitions.emplace(warlord.id, warlord);
 }
 
 
@@ -120,14 +211,21 @@ CardManager::CardManager()
 void CardManager::setupStartingCards(PlayerCardState &playerState) const
 {
     playerState = {};
-    playerState.hand.push_back("destroy_pawn");
-    playerState.deck.push_back("destroy_pawn");
-    
-    playerState.hand.push_back("charge");
+    playerState.deck.push_back("disintegrate");
     playerState.deck.push_back("charge");
-
-    playerState.hand.push_back("onslaught");
     playerState.deck.push_back("onslaught");
+    playerState.deck.push_back("knightmare");
+    playerState.deck.push_back("think_again");
+    playerState.deck.push_back("bog");
+    playerState.deck.push_back("neutrality");
+    playerState.deck.push_back("warlord");
+
+    static std::mt19937 rng(std::random_device{}());
+    std::shuffle(playerState.deck.begin(), playerState.deck.end(), rng);
+    while (playerState.hand.size() < STARTING_HAND_SIZE && !playerState.deck.empty())
+    {
+        drawCard(playerState);
+    }
 }
 
 const CardDefinition *CardManager::getDefinition(const std::string &cardId) const
@@ -167,29 +265,86 @@ CardResult CardManager::canPlayCard(GameState &game, const std::string &player, 
 
     if (definition->timing == CardTiming::AS_OWN_TURN && game.getBoard().getTurn() != player)
     {
-        return failure("Destroy Pawn can only be played on your own turn.", action);
+        return failure("That card can only be played as your own turn.", action);
+    }
+    if (definition->timing == CardTiming::BEFORE_OWN_TURN && game.getBoard().getTurn() != player)
+    {
+        return failure("That card can only be played before your move.", action);
+    }
+    if (definition->timing == CardTiming::AFTER_OPPONENT_TURN && !game.canReactAfterOpponentTurn(player))
+    {
+        return failure("That reaction can only be played after your opponent's turn.", action);
+    }
+    if (definition->timing == CardTiming::AFTER_OWN_TURN && !game.canPlayAfterOwnMove(player))
+    {
+        return failure("That card can only be played after your move.", action);
     }
     if (definition->timing != CardTiming::AS_OWN_TURN &&
+        definition->timing != CardTiming::BEFORE_OWN_TURN &&
+        definition->timing != CardTiming::AFTER_OWN_TURN &&
+        definition->timing != CardTiming::AFTER_OPPONENT_TURN &&
         definition->timing != CardTiming::ANYTIME)
     {
         return failure("That card timing window is not implemented yet.", action);
     }
 
-    if (definition->countsAsOwnTurnCard && playerState.cardPlayedOnOwnTurn)
+    std::string retryMessage;
+    if (!game.retryAllowsCard(player, action.cardId, retryMessage))
     {
-        return failure("You have already played your own-turn card this turn.", action);
+        return failure(retryMessage, action);
+    }
+
+    const bool isOwnTurnTiming = definition->timing == CardTiming::BEFORE_OWN_TURN ||
+                                  definition->timing == CardTiming::AS_OWN_TURN ||
+                                  definition->timing == CardTiming::AFTER_OWN_TURN;
+    if (isOwnTurnTiming && playerState.cardPlayedOnOwnTurn)
+    {
+        return failure("You have already played a card this turn.", action);
+    }
+
+    if (definition->effect == CardEffectType::BOG_MOVE && !game.canBogLastMove(player))
+    {
+        return failure("Bog can only slow an opponent rook, bishop, or queen move of two or more squares.", action);
     }
 
     Pieces *target = game.getBoard().getPieceAt(action.targetSquare);
-    if (definition->targetRequirement == CardTargetRequirement::ENEMY_PAWN &&
+    if (definition->targetRequirement == CardTargetRequirement::FRIENDLY_NON_KING &&
         !game.getBoard().isValid(action.targetSquare))
     {
         return failure("Choose a valid target square.", action);
     }
-    if (definition->targetRequirement == CardTargetRequirement::ENEMY_PAWN &&
-        (target == nullptr || target->getColor() == player || target->getType() != "Pawn"))
+    if (definition->targetRequirement == CardTargetRequirement::FRIENDLY_NON_KING &&
+        (!isFriendlyOrNeutral(target, player) || target->getType() == "King"))
     {
-        return failure("Destroy Pawn must target one enemy pawn.", action);
+        return failure("Disintegrate must target one of your non-king pieces.", action);
+    }
+
+    if (definition->targetRequirement == CardTargetRequirement::ENEMY_NON_KING_QUEEN)
+    {
+        if (!game.getBoard().isValid(action.targetSquare))
+        {
+            return failure("Choose a valid target square.", action);
+        }
+        if (!isEnemyOrNeutral(target, player) || target->getType() == "King" || target->getType() == "Queen")
+        {
+            return failure("Neutrality must target one opponent non-king, non-queen piece.", action);
+        }
+    }
+
+    if (definition->targetRequirement == CardTargetRequirement::FRIENDLY_KING)
+    {
+        if (!game.getBoard().isValid(action.targetSquare))
+        {
+            return failure("Choose a valid target square.", action);
+        }
+        if (target == nullptr || target->getType() != "King" || target->getColor() != player)
+        {
+            return failure("Warlord must target your own King.", action);
+        }
+        if (target->isWarlord())
+        {
+            return failure("Your King is already a Warlord.", action);
+        }
     }
 
     if (definition->targetRequirement == CardTargetRequirement::FRIENDLY_KNIGHT)
@@ -204,7 +359,7 @@ CardResult CardManager::canPlayCard(GameState &game, const std::string &player, 
         }
 
         Pieces *movingPiece = game.getBoard().getPieceAt(action.fromSquare);
-        if (movingPiece == nullptr || movingPiece->getColor() != player || movingPiece->getType() != "Knight")
+        if (!isFriendlyOrNeutral(movingPiece, player) || movingPiece->getType() != "Knight")
         {
             return failure("Charge must start from one of your knights.", action);
         }
@@ -236,18 +391,21 @@ CardResult CardManager::canPlayCard(GameState &game, const std::string &player, 
             }
 
             Pieces *pawn = game.getBoard().getPieceAt(fromSquare);
-            if (pawn == nullptr || pawn->getColor() != player || pawn->getType() != "Pawn")
+            if (!isFriendlyOrNeutral(pawn, player) || pawn->getType() != "Pawn")
             {
                 return failure("Onslaught may only choose your pawns.", action);
             }
 
-            const std::string destination = oneSquareForward(game.getBoard(), fromSquare, player);
+            const std::string destination = oneSquareForward(game.getBoard(), fromSquare, pawn->getColor());
             if (destination.empty() || !game.getBoard().isEmpty(destination))
             {
                 return failure("Onslaught pawns must move one square forward without capturing.", action);
             }
 
+            const std::string originalTurn = game.getBoard().getTurn();
+            game.getBoard().setTurn(pawn->getColor());
             const std::vector<std::string> legalMoves = game.getBoard().getLegalMoves(fromSquare);
+            game.getBoard().setTurn(originalTurn);
             if (!containsSquare(legalMoves, destination))
             {
                 return failure("Onslaught includes a pawn with an illegal forward move.", action);
@@ -269,28 +427,33 @@ CardResult CardManager::playCard(GameState &game, const std::string &player, con
     const CardDefinition *definition = getDefinition(action.cardId);
     if (definition->effect == CardEffectType::DESTROY_TARGET)
     {
-        if (!game.getBoard().removePiece(action.targetSquare))
+        if (!game.removePiece(action.targetSquare))
         {
             return failure("The card effect could not remove its target.", action);
         }
 
         PlayerCardState &playerState = game.getCardState(player);
         consumeCard(playerState, *definition);
-        finishOwnTurnCard(game, player, *definition);
-        return success(player + " played Destroy Pawn on " + action.targetSquare + ".", action);
+        finishTurnCard(game, player, *definition);
+        return success(player + " played Disintegrate on " + action.targetSquare + ".", action);
     }
 
     if (definition->effect == CardEffectType::CHARGE_KNIGHT)
     {
         Board &board = game.getBoard();
+        Pieces *movingPiece = board.getPieceAt(action.fromSquare);
+        const std::string movingPieceColor = movingPiece == nullptr ? player : movingPiece->getColor();
+        board.setTurn(movingPieceColor);
         if (!board.movePiece(action.fromSquare, action.targetSquare, "Queen"))
         {
+            board.setTurn(player);
             return failure("Charge first move was not legal.", action);
         }
 
-        board.setTurn(player);
+        board.setTurn(movingPieceColor);
         if (!board.movePiece(action.targetSquare, action.secondTargetSquare, "Queen"))
         {
+            board.setTurn(movingPieceColor);
             board.movePiece(action.targetSquare, action.fromSquare, "Queen");
             board.setTurn(player);
             return failure("Charge second move was not legal.", action);
@@ -298,9 +461,10 @@ CardResult CardManager::playCard(GameState &game, const std::string &player, con
 
         PlayerCardState &playerState = game.getCardState(player);
         consumeCard(playerState, *definition);
-        game.startTurn(board.getTurn());
+        const std::string chargeDrawMessage = finishTurnCard(game, player, *definition);
+        const std::string chargeSuffix = chargeDrawMessage.empty() ? "" : " " + chargeDrawMessage;
         return success(player + " played Charge from " + action.fromSquare + " to " +
-                           action.targetSquare + " to " + action.secondTargetSquare + ".",
+                           action.targetSquare + " to " + action.secondTargetSquare + "." + chargeSuffix,
                        action);
     }
 
@@ -311,9 +475,13 @@ CardResult CardManager::playCard(GameState &game, const std::string &player, con
 
         for (const std::string &fromSquare : pawnSquares)
         {
-            const std::string destination = oneSquareForward(board, fromSquare, player);
+            Pieces *pawn = board.getPieceAt(fromSquare);
+            const std::string pawnColor = pawn == nullptr ? player : pawn->getColor();
+            const std::string destination = oneSquareForward(board, fromSquare, pawnColor);
+            board.setTurn(pawnColor);
             if (!board.movePiece(fromSquare, destination, action.promotionPiece))
             {
+                board.setTurn(player);
                 return failure("Onslaught could not move every selected pawn.", action);
             }
             board.setTurn(player);
@@ -321,7 +489,7 @@ CardResult CardManager::playCard(GameState &game, const std::string &player, con
 
         PlayerCardState &playerState = game.getCardState(player);
         consumeCard(playerState, *definition);
-        finishOwnTurnCard(game, player, *definition);
+        const std::string onslaughtDrawMessage = finishTurnCard(game, player, *definition);
 
         std::ostringstream message;
         message << player << " played Onslaught and moved " << pawnSquares.size() << " pawn";
@@ -330,7 +498,77 @@ CardResult CardManager::playCard(GameState &game, const std::string &player, con
             message << "s";
         }
         message << " one square forward.";
+        if (!onslaughtDrawMessage.empty())
+        {
+            message << " " << onslaughtDrawMessage;
+        }
         return success(message.str(), action);
+    }
+
+    if (definition->effect == CardEffectType::APPLY_NEUTRALITY)
+    {
+        Pieces *target = game.getBoard().getPieceAt(action.targetSquare);
+        if (target == nullptr)
+        {
+            return failure("Neutrality could not find its target.", action);
+        }
+
+        target->setNeutral(true);
+        game.addContinuingEffect(definition->id, player, action.targetSquare);
+        PlayerCardState &playerState = game.getCardState(player);
+        auto card = std::find(playerState.hand.begin(), playerState.hand.end(), definition->id);
+        playerState.hand.erase(card);
+        playerState.activePile.push_back(definition->id);
+        playerState.cardPlayedOnOwnTurn = true;
+        return success(player + " played Neutrality on " + action.targetSquare + ".", action);
+    }
+
+    if (definition->effect == CardEffectType::APPLY_WARLORD)
+    {
+        Pieces *target = game.getBoard().getPieceAt(action.targetSquare);
+        if (target == nullptr)
+        {
+            return failure("Warlord could not find its target.", action);
+        }
+
+        target->setWarlord(true);
+        game.addContinuingEffect(definition->id, player, action.targetSquare);
+        PlayerCardState &playerState = game.getCardState(player);
+        auto card = std::find(playerState.hand.begin(), playerState.hand.end(), definition->id);
+        playerState.hand.erase(card);
+        playerState.activePile.push_back(definition->id);
+        playerState.cardPlayedOnOwnTurn = true;
+        const std::string warlordDrawMessage = finishTurnCard(game, player, *definition);
+        const std::string warlordSuffix = warlordDrawMessage.empty() ? "" : " " + warlordDrawMessage;
+        return success(player + " played Warlord. The " + player + " King on " + action.targetSquare + " is now a Warlord!" + warlordSuffix, action);
+    }
+
+    if (definition->effect == CardEffectType::CANCEL_LAST_ACTION)
+    {
+        PlayerCardState playerStateAfterCost = game.getCardState(player);
+        consumeCard(playerStateAfterCost, *definition);
+
+        std::string message;
+        if (!game.cancelLastActionWithKnightmare(player, playerStateAfterCost, definition->name, message))
+        {
+            return failure(message, action);
+        }
+
+        return success(message, action);
+    }
+
+    if (definition->effect == CardEffectType::BOG_MOVE)
+    {
+        PlayerCardState playerStateAfterCost = game.getCardState(player);
+        consumeCard(playerStateAfterCost, *definition);
+
+        std::string message;
+        if (!game.bogLastMove(player, playerStateAfterCost, message))
+        {
+            return failure(message, action);
+        }
+
+        return success(message, action);
     }
 
     return failure("That card effect is not implemented yet.", action);
@@ -379,20 +617,8 @@ CardResult CardManager::startTurn(GameState &game, const std::string &player) co
     PlayerCardState &playerState = game.getCardState(player);
     playerState.cardPlayedOnOwnTurn = false;
     playerState.discardedThisTurn = false;
-
-    if (!playerState.drawAtStartOfNextTurn)
-    {
-        return success(player + " turn started.", action);
-    }
-
     playerState.drawAtStartOfNextTurn = false;
-    if (playerState.deck.empty())
-    {
-        return success(player + " has no card to draw.", action);
-    }
+    playerState.drawnThisTurn = false;
 
-    const std::string drawnCardId = playerState.deck.back();
-    playerState.deck.pop_back();
-    playerState.hand.push_back(drawnCardId);
-    return {true, player + " drew " + drawnCardId + " at the start of their turn.", "", "", drawnCardId};
+    return success(player + " turn started.", action);
 }

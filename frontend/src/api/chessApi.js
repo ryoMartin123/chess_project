@@ -19,14 +19,16 @@ async function requestJson(path, options = {}) {
 }
 
 function normalizePlayerCards(raw) {
-  if (!raw) return { deckCount: 0, hand: [], discardPile: [], cardPlayedOnOwnTurn: false, discardedThisTurn: false, drawAtStartOfNextTurn: false };
+  if (!raw) return { deckCount: 0, hand: [], discardPile: [], activePile: [], cardPlayedOnOwnTurn: false, discardedThisTurn: false, drawAtStartOfNextTurn: false };
   return {
     deckCount: raw.deckCount ?? 0,
     hand: Array.isArray(raw.hand) ? raw.hand : [],
     discardPile: Array.isArray(raw.discardPile) ? raw.discardPile : [],
+    activePile: Array.isArray(raw.activePile) ? raw.activePile : [],
     cardPlayedOnOwnTurn: Boolean(raw.cardPlayedOnOwnTurn),
     discardedThisTurn: Boolean(raw.discardedThisTurn),
     drawAtStartOfNextTurn: Boolean(raw.drawAtStartOfNextTurn),
+    drawnThisTurn: Boolean(raw.drawnThisTurn),
   };
 }
 
@@ -45,7 +47,11 @@ function normalizeGameResponse(response, fallbackBoard = []) {
     turn: response.turn || "White",
     gameOver: Boolean(response.gameOver),
     message: response.message || (response.valid ? "Move accepted." : "Invalid move."),
+    neutralSquares: Array.isArray(response.neutralSquares) ? response.neutralSquares : [],
+    warlordSquares: Array.isArray(response.warlordSquares) ? response.warlordSquares : [],
+    continuingEffects: Array.isArray(response.continuingEffects) ? response.continuingEffects : [],
     cards: normalizeCardState(response.cards),
+    pendingCheckmate: response.pendingCheckmate ?? "",
   };
 }
 
@@ -99,6 +105,19 @@ export async function discardCard(player, cardId) {
     body: JSON.stringify({ player, cardId }),
   });
   return { ...normalizeGameResponse(result), cardResult: result.cardResult };
+}
+
+export async function drawCardAsTurn(player) {
+  const result = await requestJson("/api/card/draw", {
+    method: "POST",
+    body: JSON.stringify({ player }),
+  });
+  return { ...normalizeGameResponse(result), cardResult: result.cardResult };
+}
+
+export async function claimCheckmate() {
+  const result = await requestJson("/api/claim-checkmate", { method: "POST" });
+  return normalizeGameResponse(result);
 }
 
 export async function getBackendHealth() {

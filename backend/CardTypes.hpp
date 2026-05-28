@@ -12,10 +12,11 @@ enum class CardTiming
 enum class CardTargetRequirement
 {
     NONE,
-    ENEMY_PAWN,
+    FRIENDLY_NON_KING,
     FRIENDLY_KNIGHT,
-    FRIENDLY_PAWNS
-
+    FRIENDLY_PAWNS,
+    ENEMY_NON_KING_QUEEN,
+    FRIENDLY_KING
 };
 
 enum class CardEffectType
@@ -23,5 +24,9 @@ enum class CardEffectType
     NONE,
     DESTROY_TARGET,
     CHARGE_KNIGHT,
-    MOVE_PAWNS
+    MOVE_PAWNS,
+    CANCEL_LAST_ACTION,
+    BOG_MOVE,
+    APPLY_NEUTRALITY,
+    APPLY_WARLORD
 };

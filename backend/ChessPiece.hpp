@@ -15,6 +15,8 @@ protected:
     bool captured;
     std::string square;
     bool hasMoved;
+    bool neutral;
+    bool warlord;
 
 public:
     Pieces(std::string type, std::string color, bool captured, std::string square, bool hasMoved);
@@ -30,6 +32,11 @@ public:
     void undoCapture();
     bool getHasMoved();
     void markMoved();
+    void setHasMoved(bool moved);
+    bool isNeutral() const;
+    void setNeutral(bool neutral);
+    bool isWarlord() const;
+    void setWarlord(bool warlord);
 };
 
 class Pawn : public Pieces

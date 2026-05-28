@@ -42,20 +42,22 @@ JSON request parsing and response serialization use the vendored `nlohmann/json`
 `POST /api/card/play` validates and applies a card against the live board:
 
 ```json
-{ "player": "White", "cardId": "destroy_pawn", "targetSquare": "a7" }
+{ "player": "White", "cardId": "disintegrate", "targetSquare": "a2" }
 ```
 
 `POST /api/card/discard` discards a card during the player's own turn and schedules its replacement draw for the start of their next turn:
 
 ```json
-{ "player": "White", "cardId": "destroy_pawn" }
+{ "player": "White", "cardId": "disintegrate" }
 ```
 
 ## Card Examples
 
-`CardManager.cpp` defines the development card catalog, including `destroy_pawn`, `charge`, and `onslaught`. These are `AS_OWN_TURN` cards, so playing one applies its effect and then passes the turn.
+`CardManager.cpp` defines the development card catalog, including `disintegrate`, `charge`, `onslaught`, `knightmare`, `bog`, and `neutrality`. Turn cards such as `charge` and `onslaught` apply their effects and then pass the turn; `disintegrate` is a `BEFORE_OWN_TURN` card and leaves the player free to move afterward. Reaction cards such as `knightmare` and `bog` are played after the opponent's turn and do not spend your turn. Continuing-effect cards such as `neutrality` mark a board piece and keep changing the rules until the piece is captured or a future card removes the effect.
 
-For development, both players start with one copy of each test card in hand and one in their deck. This makes the play path and the discard-then-draw path testable before deck building exists.
+Each `CardDefinition` includes `rulesText`, a longer plain-English description that the frontend can later show in an inspect/details panel.
+
+For development, both players build their starting deck from the current test card catalog, then draw a five-card opening hand from that deck. Discarding schedules one draw from the remaining deck at the start of that player's next turn.
 
 ```sh
 g++.exe -std=c++17 card_testing.cpp GameState.cpp CardManager.cpp ChessBoard.cpp ChessPiece.cpp Move.cpp -o card_testing.exe

@@ -131,12 +131,16 @@ std::string cardTargetToString(CardTargetRequirement target)
     {
     case CardTargetRequirement::NONE:
         return "NONE";
-    case CardTargetRequirement::ENEMY_PAWN:
-        return "ENEMY_PAWN";
+    case CardTargetRequirement::FRIENDLY_NON_KING:
+        return "FRIENDLY_NON_KING";
     case CardTargetRequirement::FRIENDLY_KNIGHT:
         return "FRIENDLY_KNIGHT";
     case CardTargetRequirement::FRIENDLY_PAWNS:
         return "FRIENDLY_PAWNS";
+    case CardTargetRequirement::ENEMY_NON_KING_QUEEN:
+        return "ENEMY_NON_KING_QUEEN";
+    case CardTargetRequirement::FRIENDLY_KING:
+        return "FRIENDLY_KING";
     }
     return "";
 }
@@ -153,6 +157,14 @@ std::string cardEffectToString(CardEffectType effect)
         return "CHARGE_KNIGHT";
     case CardEffectType::MOVE_PAWNS:
         return "MOVE_PAWNS";
+    case CardEffectType::CANCEL_LAST_ACTION:
+        return "CANCEL_LAST_ACTION";
+    case CardEffectType::BOG_MOVE:
+        return "BOG_MOVE";
+    case CardEffectType::APPLY_NEUTRALITY:
+        return "APPLY_NEUTRALITY";
+    case CardEffectType::APPLY_WARLORD:
+        return "APPLY_WARLORD";
     }
     return "";
 }
@@ -166,7 +178,8 @@ json cardDefinitionToJson(const CardDefinition &definition)
         {"timing", cardTimingToString(definition.timing)},
         {"targetRequirement", cardTargetToString(definition.targetRequirement)},
         {"effect", cardEffectToString(definition.effect)},
-        {"countsAsOwnTurnCard", definition.countsAsOwnTurnCard}};
+        {"countsAsOwnTurnCard", definition.countsAsOwnTurnCard},
+        {"rulesText", definition.rulesText}};
 }
 
 json playerCardsToJson(const PlayerCardState &state)
@@ -175,9 +188,11 @@ json playerCardsToJson(const PlayerCardState &state)
         {"deckCount", state.deck.size()},
         {"hand", state.hand},
         {"discardPile", state.discardPile},
+        {"activePile", state.activePile},
         {"cardPlayedOnOwnTurn", state.cardPlayedOnOwnTurn},
         {"discardedThisTurn", state.discardedThisTurn},
-        {"drawAtStartOfNextTurn", state.drawAtStartOfNextTurn}};
+        {"drawAtStartOfNextTurn", state.drawAtStartOfNextTurn},
+        {"drawnThisTurn", state.drawnThisTurn}};
 }
 
 json cardStatesToJson(const GameState &game)
@@ -185,6 +200,21 @@ json cardStatesToJson(const GameState &game)
     return {
         {"White", playerCardsToJson(game.getCardState("White"))},
         {"Black", playerCardsToJson(game.getCardState("Black"))}};
+}
+
+json continuingEffectsToJson(const GameState &game)
+{
+    json effects = json::array();
+    for (const ContinuingEffect &effect : game.getContinuingEffects())
+    {
+        effects.push_back({
+            {"id", effect.id},
+            {"cardId", effect.cardId},
+            {"playedBy", effect.playedBy},
+            {"targetSquare", effect.targetSquare},
+            {"active", effect.active}});
+    }
+    return effects;
 }
 
 json cardCatalogToJson(const GameState &game)
@@ -206,7 +236,11 @@ json makeGameResponse(GameState &game, bool valid, const std::string &message)
         {"turn", board.getTurn()},
         {"gameOver", board.isGameOver()},
         {"message", message},
-        {"cards", cardStatesToJson(game)}};
+        {"neutralSquares", game.getNeutralSquares()},
+        {"warlordSquares", game.getWarlordSquares()},
+        {"continuingEffects", continuingEffectsToJson(game)},
+        {"cards", cardStatesToJson(game)},
+        {"pendingCheckmate", game.getPendingCheckmatePlayer()}};
 }
 
 json makeMoveResponse(const json &body, GameState &game)
@@ -473,10 +507,16 @@ void handleClient(SOCKET client, GameState &game)
             game.reset();
             sendResponse(client, 200, makeGameResponse(game, true, game.getLastMessage()).dump());
         }
+        else if (firstLine.find("POST /api/claim-checkmate ") == 0)
+        {
+            game.claimCheckmate();
+            sendResponse(client, 200, makeGameResponse(game, true, game.getLastMessage()).dump());
+        }
         else if (firstLine.find("POST /api/move ") == 0 ||
                  firstLine.find("POST /api/legal-moves ") == 0 ||
                  firstLine.find("POST /api/card/play ") == 0 ||
-                 firstLine.find("POST /api/card/discard ") == 0)
+                 firstLine.find("POST /api/card/discard ") == 0 ||
+                 firstLine.find("POST /api/card/draw ") == 0)
         {
             const size_t bodyStart = request.find("\r\n\r\n");
             std::string body = bodyStart == std::string::npos ? "" : request.substr(bodyStart + 4);
@@ -499,9 +539,14 @@ void handleClient(SOCKET client, GameState &game)
             {
                 sendResponse(client, 200, makePlayCardResponse(requestBody, game).dump());
             }
-            else
+            else if (firstLine.find("POST /api/card/discard ") == 0)
             {
                 sendResponse(client, 200, makeDiscardCardResponse(requestBody, game).dump());
+            }
+            else
+            {
+                CardResult result = game.drawCardAsTurn(requestBody.value("player", ""));
+                sendResponse(client, 200, makeCardActionResponse(game, result).dump());
             }
         }
         else
